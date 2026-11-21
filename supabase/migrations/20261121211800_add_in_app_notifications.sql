@@ -1,8 +1,4 @@
 -- In-app notifications for assistants and administrators.
-create index if not exists notifications_recipient_created_idx
-  on public.notifications (recipient_id, created_at desc);
-create index if not exists notifications_case_id_idx
-  on public.notifications (case_id);
 create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),
   recipient_id uuid not null references public.profiles(id) on delete cascade,
@@ -13,6 +9,10 @@ create table if not exists public.notifications (
   created_at timestamptz not null default now(),
   read_at timestamptz
 );
+create index if not exists notifications_recipient_created_idx
+  on public.notifications (recipient_id, created_at desc);
+create index if not exists notifications_case_id_idx
+  on public.notifications (case_id);
 alter table public.notifications enable row level security;
 revoke all on public.notifications from anon;
 grant select on public.notifications to authenticated;
