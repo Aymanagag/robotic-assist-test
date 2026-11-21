@@ -267,6 +267,7 @@ hr{border:0;border-top:1px solid #e8edf3;margin:15px 0}
 .login-brand .advance-logo{width:100%;height:auto}
 @media(max-width:600px){.app-header{padding:0}.advance-logo{width:100%;height:auto}.login-brand{max-width:100%}}
 
+ .clickable-case-row{cursor:pointer}.clickable-case-row:hover{background:#f1f5f9}.clickable-case-row:focus-visible{outline:3px solid var(--accent,#64748b);outline-offset:-3px}
 </style>
 </head>
 <body>
@@ -613,6 +614,7 @@ padding:20px;
 
 <section id="cases" class="panel">
 <h2>All Surgical Cases</h2>
+<div id="caseDetailsPanel" class="card" style="display:none" aria-live="polite"></div>
 <div class="card">
 <div id="allCases"></div>
 </div>
@@ -2015,7 +2017,49 @@ async function cancelCase(id) {
 }
 function allCaseList(){
 if(!data.cases.length)return '<div class="empty">No cases registered yet.</div>';
-return '<div class="tablewrap"><table><tr><th>Case</th><th>Date/time</th><th>Hospital</th><th>Assistant</th><th>Status</th></tr>'+data.cases.map(c=>`<tr><td>${esc(c.procedure)}</td><td>${c.date}<br>${c.start}-${c.finish}</td><td>${esc(c.hospital)}</td><td>${esc(nameOf(c.assistant))}</td><td><span class="tag status-${c.status.toLowerCase()}">${esc(c.status)}</span></td></tr>`).join("")+'</table></div>';
+return '<p class="muted small">Select a case row to view its details and available actions.</p><div class="tablewrap"><table><tr><th>Case</th><th>Date/time</th><th>Hospital</th><th>Assistant</th><th>Status</th></tr>'+data.cases.map(c=>`<tr class="clickable-case-row" tabindex="0" role="button" aria-label="Open case details: ${esc(c.procedure)}" onclick="openCaseDetails('${esc(c.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openCaseDetails('${esc(c.id)}')}"><td>${esc(c.procedure)}</td><td>${esc(c.date)}<br>${esc(c.start)}–${esc(c.finish)}</td><td>${esc(c.hospital)}</td><td>${esc(nameOf(c.assistant))}</td><td><span class="tag status-${c.status.toLowerCase()}">${esc(c.status)}</span></td></tr>`).join("")+'</table></div>';
+}
+function closeCaseDetails(){
+  const panel=document.getElementById("caseDetailsPanel");
+  panel.style.display="none";
+  panel.innerHTML="";
+}
+function openCaseDetails(id){
+  const c=data.cases.find(x=>String(x.id)===String(id));
+  if(!c){alert("Case not found. Refresh the case list and try again.");return;}
+  const panel=document.getElementById("caseDetailsPanel");
+  const canAssign=!["Cancelled","Completed"].includes(c.status);
+  const assistantOptions=data.assistants.map(a=>`<option value="${esc(a.id)}">${esc(a.name)}</option>`).join("");
+  let assignmentActions="";
+  if(canAssign && c.assistant){
+    assignmentActions=`<p><strong>Currently assigned:</strong> ${esc(nameOf(c.assistant))}</p>
+      <label for="changeAssign${esc(c.id)}">Change assistant</label>
+      <select id="changeAssign${esc(c.id)}">${data.assistants.filter(a=>String(a.id)!==String(c.assistant)).map(a=>`<option value="${esc(a.id)}">${esc(a.name)}</option>`).join("")}</select>
+      <button class="action" type="button" onclick="changeAssignedAssistant('${esc(c.id)}')">Change assistant</button>
+      <button class="danger" type="button" onclick="removeAssignedAssistant('${esc(c.id)}')">Remove assistant</button>`;
+  }else if(canAssign){
+    assignmentActions=`<p><strong>Assistant:</strong> Not assigned</p>
+      <label for="assign${esc(c.id)}">Assign assistant</label>
+      <select id="assign${esc(c.id)}">${assistantOptions}</select>
+      <button class="action" type="button" onclick="invite('${esc(c.id)}')">Assign and send invitation</button>`;
+  }else{
+    assignmentActions=`<p><strong>Assistant:</strong> ${esc(nameOf(c.assistant))}</p><p class="muted">Assistant assignment cannot be changed for a ${esc(c.status.toLowerCase())} case.</p>`;
+  }
+  panel.innerHTML=`<div class="day-view-toolbar"><div><h3>Case details</h3><p class="muted">Case reference: ${esc(c.id)}</p></div><button class="secondary" type="button" onclick="closeCaseDetails()">Close details</button></div>
+    <dl class="day-case-details">
+      <div><dt>Procedure</dt><dd>${esc(c.procedure)}</dd></div>
+      <div><dt>Hospital</dt><dd>${esc(c.hospital)}</dd></div>
+      <div><dt>Surgeon</dt><dd>${esc(c.surgeon)}</dd></div>
+      <div><dt>Date</dt><dd>${esc(c.date)}</dd></div>
+      <div><dt>Start</dt><dd>${esc(c.start)}</dd></div>
+      <div><dt>Finish</dt><dd>${esc(c.finish)}</dd></div>
+      <div><dt>Status</dt><dd><span class="tag status-${c.status.toLowerCase()}">${esc(c.status)}</span></dd></div>
+    </dl>
+    <hr><h4>Assistant assignment</h4>${assignmentActions}
+    <hr><div class="day-view-toolbar"><button class="action" type="button" onclick="editCase('${esc(c.id)}')">Edit case details</button>${c.status==="Confirmed"?`<button class="action" type="button" onclick="completeCase('${esc(c.id)}')">Mark as completed</button>`:""}${c.status!=="Cancelled"&&c.status!=="Completed"?`<button class="danger" type="button" onclick="cancelCase('${esc(c.id)}')">Cancel case</button>`:""}</div>
+    ${c.status==="Completed"?`<p class="small">Completed: ${esc(c.completedAt?new Date(c.completedAt).toLocaleString():"Date not recorded")}</p>`:""}`;
+  panel.style.display="block";
+  panel.scrollIntoView({behavior:"smooth",block:"start"});
 }
 function availabilityList(){
 return data.assistants.map(a=>`<p><strong>${esc(a.name)}</strong> — ${a.availability.length} availability entries</p>`).join("<hr>");
