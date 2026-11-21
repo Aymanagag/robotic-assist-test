@@ -951,6 +951,30 @@ function calendarDateLabel(day, options) {
       .filter(e => e.event_date === selectedDate)
       .sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""));
 
+    // Identify overlapping bookings for the same assistant. This is a
+    // visibility warning only; allocation rules remain enforced by the RPC.
+    const overlapPairs = [];
+    const overlappingCaseIds = new Set();
+    const timedAssignedCases = dayCases.filter(e =>
+      e.assistant_id && e.start_time && e.finish_time &&
+      e.event_status !== "cancelled"
+    );
+    for (let i = 0; i < timedAssignedCases.length; i++) {
+      for (let j = i + 1; j < timedAssignedCases.length; j++) {
+        const a = timedAssignedCases[i];
+        const b = timedAssignedCases[j];
+        if (
+          a.assistant_id === b.assistant_id &&
+          a.start_time < b.finish_time &&
+          b.start_time < a.finish_time
+        ) {
+          overlapPairs.push({ a, b });
+          overlappingCaseIds.add(a.event_id);
+          overlappingCaseIds.add(b.event_id);
+        }
+      }
+    }
+
     let dayHtml = `
       <div class="day-view-toolbar">
         <button type="button" class="secondary" onclick="returnToCalendarOverview('${calendarPreviousView}')">
@@ -980,10 +1004,13 @@ function calendarDateLabel(day, options) {
               ? "calendar-confirmed"
               : "calendar-no-availability";
         dayHtml += `
-          <div class="day-case-card">
+          <div class="day-case-card" style="${overlappingCaseIds.has(e.event_id) ? "border:2px solid #dc2626;background:#fff7f7" : ""}">
             <div class="day-case-heading">
               <strong>${esc(e.start_time ? e.start_time.slice(0, 5) : "Time not set")}–${esc(e.finish_time ? e.finish_time.slice(0, 5) : "—")}</strong>
-              <span class="calendar-event ${statusClass}">${esc(status)}</span>
+              <span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                ${overlappingCaseIds.has(e.event_id) ? '<span class="calendar-event calendar-unavailable">Assistant overlap</span>' : ""}
+                <span class="calendar-event ${statusClass}">${esc(status)}</span>
+              </span>
             </div>
             <h4>${esc(e.procedure_name || "Surgical case")}</h4>
             <dl class="day-case-details">
@@ -994,6 +1021,19 @@ function calendarDateLabel(day, options) {
             </dl>
           </div>`;
       });
+    }
+
+    if (overlapPairs.length) {
+      dayHtml += `
+        <div class="warning" style="background:#fff1f2;color:#991b1b;border:1px solid #fecaca">
+          <strong>Potential double-booking detected (${overlapPairs.length})</strong>
+          <ul style="margin:8px 0 0;padding-left:20px">
+            ${overlapPairs.map(pair => `<li>${esc(pair.a.assistant_name || "Assistant")} — ${esc(pair.a.start_time.slice(0,5))}–${esc(pair.a.finish_time.slice(0,5))} (${esc(pair.a.procedure_name || "Case")}) overlaps with ${esc(pair.b.start_time.slice(0,5))}–${esc(pair.b.finish_time.slice(0,5))} (${esc(pair.b.procedure_name || "Case")})</li>`).join("")}
+          </ul>
+          <p style="margin:8px 0 0">Please review these assignments. This warning does not change or cancel bookings.</p>
+        </div>`;
+    } else {
+      dayHtml += `<p class="small" style="color:#166534">No overlapping bookings detected for the same assistant on this date.</p>`;
     }
 
     dayHtml += `<h4>Assistant availability (${dayAvailability.length} records)</h4>`;
