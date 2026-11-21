@@ -359,7 +359,7 @@ padding:20px;
     </form>
 
     <form id="passwordRecoveryForm" style="display:none">
-      <p style="color:#475569">Choose a new password for your account.</p>
+      <p id="passwordSetupDescription" style="color:#475569">Choose a new password for your account.</p>
       <label>New password</label>
       <input type="password" id="newPassword" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters">
       <label>Confirm new password</label>
@@ -2307,12 +2307,14 @@ recoveryForm.addEventListener("submit", async (e) => {
 });
 
 // Keep password recovery separate from normal session restoration.
+const authLinkType =
+  new URLSearchParams(window.location.hash.slice(1)).get("type") ||
+  new URLSearchParams(window.location.search).get("type") || "";
 let passwordRecoveryInProgress =
-  window.location.hash.includes("type=recovery") ||
-  new URLSearchParams(window.location.search).get("type") === "recovery";
+  authLinkType === "recovery" || authLinkType === "invite";
 
 supabaseClient.auth.onAuthStateChange((event) => {
-  if (event === "PASSWORD_RECOVERY") {
+  if (event === "PASSWORD_RECOVERY" || (authLinkType === "invite" && event === "SIGNED_IN")) {
     passwordRecoveryInProgress = true;
     document.getElementById("loginScreen").style.display = "flex";
     document.getElementById("passwordRecoveryMessage").textContent = "";
