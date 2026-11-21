@@ -40,7 +40,7 @@ th{color:#63748a}
 .small{font-size:12px;color:#718096}
 hr{border:0;border-top:1px solid #e8edf3;margin:15px 0}
 @media(max-width:600px){main{padding:12px}.card{padding:14px}th,td{min-width:95px}}
-.user-management-table td{vertical-align:middle}
+.user-management-table td{vertical-align:middle}\n.user-management-table button{white-space:nowrap;margin:3px 4px 3px 0}
 .user-management-name{font-weight:700;color:var(--navy)}
 .user-management-email{overflow-wrap:anywhere;color:#64748b}
 .user-role{display:inline-block;padding:5px 9px;border-radius:20px;background:#e8efff;color:#2455a5;font-size:11px;font-weight:700}
@@ -694,27 +694,35 @@ async function loadUsers() {
     const { data: userData, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !userData.user) throw new Error("Please sign in again.");
     const { data: currentProfile, error: currentProfileError } = await supabaseClient
-      .from("profiles").select("role").eq("id", userData.user.id).single();
+      .from("profiles").select("role, is_active").eq("id", userData.user.id).single();
     if (currentProfileError) throw currentProfileError;
-    if (currentProfile.role !== "admin") throw new Error("Administrator access is required.");
+    if (currentProfile.role !== "admin" || currentProfile.is_active !== true) throw new Error("Active administrator access is required.");
 
     const { data: users, error } = await supabaseClient
       .from("profiles")
-      .select("id, full_name, email, role, created_at, assistants(active)")
+      .select("id, full_name, email, role, is_active, created_at, assistants(active)")
       .order("created_at", { ascending: true });
     if (error) throw error;
     if (!users || !users.length) {
       list.innerHTML = '<p class="empty">No registered users found.</p>';
       return;
     }
-    list.innerHTML = '<div class="tablewrap"><table class="user-management-table"><thead><tr><th>Name / email</th><th>Role</th><th>Assistant access</th><th>Created</th></tr></thead><tbody>' +
+    list.innerHTML = '<div class="tablewrap"><table class="user-management-table"><thead><tr><th>Name / email</th><th>Role</th><th>Account</th><th>Assistant access</th><th>Actions</th><th>Created</th></tr></thead><tbody>' +
       users.map(user => {
         const assistant = Array.isArray(user.assistants) ? user.assistants[0] : user.assistants;
         const access = assistant ? (assistant.active ? "Active" : "Inactive") : "Not configured";
+        const isSelf = user.id === userData.user.id;
+        const roleAction = user.role === "admin" ? "assistant" : "admin";
+        const roleLabel = user.role === "admin" ? "Remove admin" : "Make admin";
+        const accountAction = user.is_active ? "Deactivate" : "Reactivate";
+        const accountDisabled = isSelf ? " disabled title=\"You cannot change your own account\"" : "";
         return '<tr><td><div class="user-management-name">' + esc(user.full_name || "Unnamed user") +
           '</div><div class="user-management-email">' + esc(user.email || "Email unavailable") +
           '</div></td><td><span class="user-role ' + (user.role === "admin" ? "admin" : "") + '">' +
-          esc(user.role) + '</span></td><td>' + esc(access) +
+          esc(user.role) + '</span></td><td>' + (user.is_active ? '<span class="tag good">Active</span>' : '<span class="tag bad">Inactive</span>') +
+          '</td><td>' + esc(access) + '</td><td>' +
+          '<button type="button" class="secondary" onclick="changeUserRole(\'' + esc(user.id) + '\',\'' + roleAction + '\')"' + accountDisabled + '>' + roleLabel + '</button>' +
+          '<button type="button" class="' + (user.is_active ? 'danger' : 'secondary') + '" onclick="changeUserActive(\'' + esc(user.id) + '\',' + (!user.is_active) + ')"' + accountDisabled + '>' + accountAction + '</button>' +
           '</td><td>' + esc(user.created_at ? new Date(user.created_at).toLocaleDateString("en-GB") : "—") +
           '</td></tr>';
       }).join("") + '</tbody></table></div>';
@@ -723,6 +731,37 @@ async function loadUsers() {
     console.error("User management load failed:", error);
   } finally {
     if (refreshButton) refreshButton.disabled = false;
+  }
+}
+
+async function changeUserRole(userId, newRole) {
+  const action = newRole === "admin" ? "grant administrator permissions to" : "remove administrator permissions from";
+  if (!confirm("Are you sure you want to " + action + " this user?")) return;
+  try {
+    const { error } = await supabaseClient.rpc("admin_set_user_role", {
+      p_user_id: userId, p_new_role: newRole
+    });
+    if (error) throw error;
+    await loadUsers();
+    alert("User role updated successfully.");
+  } catch (error) {
+    alert("Could not change user role: " + error.message);
+  }
+}
+
+async function changeUserActive(userId, isActive) {
+  const action = isActive ? "reactivate" : "deactivate";
+  if (!confirm("Are you sure you want to " + action + " this account? " +
+    (isActive ? "The user will regain application access." : "The user will lose application access, including existing sessions."))) return;
+  try {
+    const { error } = await supabaseClient.rpc("admin_set_user_active", {
+      p_user_id: userId, p_is_active: isActive
+    });
+    if (error) throw error;
+    await loadUsers();
+    alert("Account " + (isActive ? "reactivated" : "deactivated") + " successfully.");
+  } catch (error) {
+    alert("Could not update account status: " + error.message);
   }
 }
 
