@@ -1270,6 +1270,13 @@ ${status !== "Cancelled" ? `
               ${status === "Confirmed" ? "Confirmed assistant: " : "Awaiting acceptance: "}
               ${esc(nameOf(c.assistant))}
             </span>
+            <label>Change assigned assistant</label>
+            <select id="changeAssign${c.id}">
+              ${data.assistants.filter(a => String(a.id) !== String(c.assistant)).map(a =>
+                `<option value="${a.id}">${esc(a.name)}</option>`
+              ).join("")}
+            </select>
+            <button class="action" onclick="changeAssignedAssistant(&quot;${esc(c.id)}&quot;)">Change assistant</button>
           `
       }
     </div>
@@ -1355,6 +1362,49 @@ async function invite(id) {
 
   } catch (error) {
     alert("Could not allocate assistant: " + error.message);
+    console.error(error);
+  }
+}
+async function changeAssignedAssistant(caseId) {
+  try {
+    const caseRecord = data.cases.find(c => c.id === caseId);
+    if (!caseRecord || !caseRecord.assistant) throw new Error("The current assistant assignment could not be found.");
+    const select = document.getElementById("changeAssign" + caseId);
+    const newAssistantId = select && select.value;
+    if (!newAssistantId) throw new Error("Please select a replacement assistant.");
+    if (String(newAssistantId) === String(caseRecord.assistant)) throw new Error("Please select a different assistant.");
+    const reason = prompt("Why does this case need a different assistant?");
+    if (reason === null) return;
+    if (!reason.trim()) throw new Error("A reason for reassignment is required.");
+    const { data: matches, error: matchingError } = await supabaseClient.rpc("check_assistant_matching", { p_case_id: caseId });
+    if (matchingError) throw matchingError;
+    const match = (matches || []).find(a => String(a.assistant_id) === String(newAssistantId));
+    if (!match) throw new Error("Replacement assistant matching information was not found.");
+    if (match.booking_conflict) throw new Error("This assistant has an overlapping booking. Reassignment is not permitted.");
+    let override = false;
+    let overrideReason = null;
+    if (!match.availability_match) {
+      const warning = match.explicitly_unavailable
+        ? "IMPORTANT: The replacement assistant has explicitly marked themselves UNAVAILABLE on this date. Continue only after checking with them and confirming a valid operational reason."
+        : match.availability_submitted
+          ? "The replacement assistant’s submitted hours do not cover the full case time."
+          : "The replacement assistant has not submitted availability for this date.";
+      if (!confirm(warning + " Do you want to proceed with an override?")) return;
+      override = true;
+      overrideReason = prompt("Record the reason for this availability override:");
+      if (!overrideReason || !overrideReason.trim()) throw new Error("An availability override reason is required.");
+    }
+    const confirmed = confirm("This will release " + nameOf(caseRecord.assistant) + " and send a new invitation to " + nameOf(newAssistantId) + ". The surgical case details will remain unchanged. Continue?");
+    if (!confirmed) return;
+    const { error } = await supabaseClient.rpc("change_case_assistant", {
+      p_case_id: caseId, p_new_assistant_id: newAssistantId, p_reason: reason.trim(),
+      p_override_warnings: override, p_override_reason: overrideReason
+    });
+    if (error) throw error;
+    await loadCases();
+    alert("The previous assistant has been released and a new invitation has been sent. The case details are unchanged.");
+  } catch (error) {
+    alert("Could not change assistant: " + error.message);
     console.error(error);
   }
 }
