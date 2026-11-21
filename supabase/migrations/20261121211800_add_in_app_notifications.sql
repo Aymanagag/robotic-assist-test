@@ -9,6 +9,10 @@ create table if not exists public.notifications (
   created_at timestamptz not null default now(),
   read_at timestamptz
 );
+create index if not exists notifications_recipient_created_idx
+  on public.notifications (recipient_id, created_at desc);
+create index if not exists notifications_case_id_idx
+  on public.notifications (case_id);
 alter table public.notifications enable row level security;
 revoke all on public.notifications from anon;
 grant select on public.notifications to authenticated;
@@ -103,3 +107,8 @@ begin
     alter publication supabase_realtime add table public.notifications;
   end if;
 end $$;
+
+-- Trigger functions are invoked by their table triggers, not through the Data API.
+-- Revoke default PUBLIC execution so they cannot be called as SECURITY DEFINER RPCs.
+revoke all on function public.notify_invitation_changes() from public, anon, authenticated;
+revoke all on function public.notify_case_timing_changes() from public, anon, authenticated;
