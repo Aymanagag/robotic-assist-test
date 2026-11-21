@@ -200,6 +200,17 @@ hr{border:0;border-top:1px solid #e8edf3;margin:15px 0}
 .day-availability-item{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid #dce4ef;border-radius:8px;padding:11px}
 @media(max-width:600px){.day-view-toolbar{align-items:flex-start}.day-case-card{padding:12px}.day-case-details{grid-template-columns:1fr 1fr}}
 
+.stat-button{width:100%;text-align:left;cursor:pointer;color:inherit;font:inherit;border:1px solid var(--border,#ddd);background:var(--card,#fff)}
+.stat-button:hover{border-color:var(--accent,#64748b);transform:translateY(-1px)}
+.stat-button:focus-visible{outline:3px solid var(--accent,#64748b);outline-offset:2px}
+.tag.status-completed{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7}
+.tag.status-cancelled{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+.stat-button.stat-completed{border-color:#6ee7b7;background:#ecfdf5}
+.stat-button.stat-completed .stat{color:#16865B}
+.stat-button.stat-cancelled{border-color:#fca5a5;background:#fff1f2}
+.stat-button.stat-cancelled .stat{color:#C24141}
+.calendar-completed{background:#16865B;color:#fff}
+.calendar-cancelled{background:#C24141;color:#fff}
 </style>
 </head>
 <body>
@@ -307,11 +318,17 @@ padding:20px;
 
 <section id="admin" class="panel active">
 <h2>Administrator Dashboard</h2>
-<div class="grid">
-<div class="card"><div class="muted">Total cases</div><div class="stat" id="total">0</div></div>
-<div class="card"><div class="muted">Unmatched cases</div><div class="stat" id="unmatched">0</div></div>
-<div class="card"><div class="muted">Awaiting acceptance</div><div class="stat" id="invited">0</div></div>
-<div class="card"><div class="muted">Confirmed cases</div><div class="stat" id="confirmed">0</div></div>
+<div class="grid dashboard-stats">
+<button type="button" class="card stat-button" onclick="filterCases('all')"><div class="muted">Total cases (excluding cancelled)</div><div class="stat" id="total">0</div></button>
+<button type="button" class="card stat-button" onclick="filterCases('Unmatched')"><div class="muted">Unmatched</div><div class="stat" id="unmatched">0</div></button>
+<button type="button" class="card stat-button" onclick="filterCases('Invited')"><div class="muted">Awaiting acceptance</div><div class="stat" id="invited">0</div></button>
+<button type="button" class="card stat-button" onclick="filterCases('Confirmed')"><div class="muted">Confirmed</div><div class="stat" id="confirmed">0</div></button>
+<button type="button" class="card stat-button stat-completed" onclick="filterCases('Completed')"><div class="muted">Completed</div><div class="stat" id="completed">0</div></button>
+<button type="button" class="card stat-button stat-cancelled" onclick="filterCases('Cancelled')"><div class="muted">Cancelled</div><div class="stat" id="cancelled">0</div></button>
+</div>
+<div class="card" id="filteredCasesPanel" style="display:none">
+<div class="day-view-toolbar"><h3 id="filteredCasesTitle">Cases</h3><button type="button" class="secondary" onclick="closeCaseFilter()">Close</button></div>
+<div id="filteredCasesList"></div>
 </div>
 
 <div class="card">
@@ -905,8 +922,10 @@ function calendarDateLabel(day, options) {
       dayCases.forEach(e => {
         const status = (e.event_status || "unknown").replace(/_/g, " ");
         const statusClass = e.event_status === "cancelled"
-          ? "calendar-unavailable"
-          : e.event_status === "invited"
+          ? "calendar-cancelled"
+          : e.event_status === "completed"
+            ? "calendar-completed"
+            : e.event_status === "invited"
             ? "calendar-pending"
             : e.event_status === "confirmed"
               ? "calendar-confirmed"
@@ -1146,6 +1165,8 @@ if (view === "month") {
         finish_time,
         status,
         assistant_id,
+        completed_at,
+        completed_by,
         hospital:hospitals(name),
         procedure:procedures(name),
         surgeon:surgeons(name)
@@ -1164,6 +1185,8 @@ if (view === "month") {
       finish: c.finish_time,
       status: c.status.charAt(0).toUpperCase() + c.status.slice(1),
       assistant: c.assistant_id,
+      completedAt: c.completed_at,
+      completedBy: c.completed_by,
       hospital: c.hospital?.name || "",
       procedure: c.procedure?.name || "",
       surgeon: c.surgeon?.name || ""
@@ -1181,16 +1204,64 @@ if (view === "month") {
 options("hospital",data.hospitals);
 options("procedure",data.procedures);
 options("surgeon",data.surgeons);
-document.getElementById("total").textContent=data.cases.length;
+document.getElementById("total").textContent=data.cases.filter(c=>c.status!=="Cancelled").length;
 document.getElementById("unmatched").textContent=data.cases.filter(c=>c.status==="Unmatched").length;
 document.getElementById("invited").textContent=data.cases.filter(c=>c.status==="Invited").length;
 document.getElementById("confirmed").textContent=data.cases.filter(c=>c.status==="Confirmed").length;
+document.getElementById("completed").textContent=data.cases.filter(c=>c.status==="Completed").length;
+document.getElementById("cancelled").textContent=data.cases.filter(c=>c.status==="Cancelled").length;
 document.getElementById("unmatchedList").innerHTML=caseList("Unmatched");
 document.getElementById("invitedList").innerHTML=caseList("Invited");
 document.getElementById("confirmedList").innerHTML=caseList("Confirmed");
 document.getElementById("allCases").innerHTML=allCaseList();
+
 document.getElementById("availabilityOverview").innerHTML=availabilityList();
 renderAssistant();
+}
+function filterCases(status) {
+  const panel = document.getElementById("filteredCasesPanel");
+  const title = status === "all" ? "All non-cancelled cases" : status + " cases";
+  const cases = status === "all"
+    ? data.cases.filter(c => c.status !== "Cancelled")
+    : data.cases.filter(c => c.status === status);
+  document.getElementById("filteredCasesTitle").textContent = title + " (" + cases.length + ")";
+  document.getElementById("filteredCasesList").innerHTML = cases.length
+    ? cases.map(c => caseCard(c)).join("")
+    : '<div class="empty">No cases in this category.</div>';
+  panel.style.display = "block";
+  panel.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function closeCaseFilter() {
+  document.getElementById("filteredCasesPanel").style.display = "none";
+}
+function caseCard(c) {
+  const status = c.status;
+  return `<div class="card">
+    <strong>${esc(c.procedure)}</strong><br>
+    <span class="muted">${esc(c.hospital)} · ${esc(c.date)} · ${esc(c.start)}–${esc(c.finish)}</span>
+    <p class="small">Surgeon: ${esc(c.surgeon)} · Assistant: ${esc(nameOf(c.assistant))}</p>
+    <span class="tag ${status === "Completed" ? "status-completed" : status === "Cancelled" ? "status-cancelled" : ""}">${esc(status)}</span>
+    ${status === "Confirmed" ? `<button class="action" onclick="completeCase('${esc(c.id)}')">Mark as completed</button>` : ""}
+    ${status !== "Cancelled" && status !== "Completed" ? `<button class="action" onclick="cancelCase('${esc(c.id)}')">Cancel case</button>` : ""}
+    ${status === "Completed" ? `<p class="small">Completed: ${esc(c.completedAt ? new Date(c.completedAt).toLocaleString() : "Date not recorded")}</p>` : ""}
+  </div>`;
+}
+async function completeCase(id) {
+  const c = data.cases.find(x => x.id === id);
+  if (!c || c.status !== "Confirmed") {
+    alert("Only confirmed cases can be marked as completed.");
+    return;
+  }
+  if (!confirm("Mark this case as completed? It will move to Completed and be removed from active cases.")) return;
+  try {
+    const { error } = await supabaseClient.rpc("complete_surgical_case", {p_case_id:id});
+    if (error) throw error;
+    await loadCases();
+    alert("Case marked as completed.");
+  } catch (error) {
+    alert("Could not complete case: " + error.message);
+    console.error(error);
+  }
 }
  function nameOf(id) {
   let a = data.assistants.find(x => x.id == id);
@@ -1243,6 +1314,8 @@ function caseList(status) {
         ${esc(c.hospital)} · ${esc(c.date)} · ${esc(c.start)}–${esc(c.finish)}
       </span>
       <p class="small">Surgeon: ${esc(c.surgeon)}</p>
+      ${status === "Confirmed" ? `<button class="action" onclick="completeCase('${esc(c.id)}')">Mark as completed</button>` : ""}
+      ${status === "Completed" ? `<p class="small">Completed: ${esc(c.completedAt ? new Date(c.completedAt).toLocaleString() : "Date not recorded")}</p>` : ""}
       <button class="action" onclick="editCase('${esc(c.id)}')">
   Edit case
 </button>
@@ -1465,7 +1538,7 @@ async function cancelCase(id) {
 }
 function allCaseList(){
 if(!data.cases.length)return '<div class="empty">No cases registered yet.</div>';
-return '<div class="tablewrap"><table><tr><th>Case</th><th>Date/time</th><th>Hospital</th><th>Assistant</th><th>Status</th></tr>'+data.cases.map(c=>`<tr><td>${esc(c.procedure)}</td><td>${c.date}<br>${c.start}-${c.finish}</td><td>${esc(c.hospital)}</td><td>${esc(nameOf(c.assistant))}</td><td><span class="tag ${c.status==="Confirmed"?"good":c.status==="Unmatched"?"bad":""}">${c.status}</span></td></tr>`).join("")+'</table></div>';
+return '<div class="tablewrap"><table><tr><th>Case</th><th>Date/time</th><th>Hospital</th><th>Assistant</th><th>Status</th></tr>'+data.cases.map(c=>`<tr><td>${esc(c.procedure)}</td><td>${c.date}<br>${c.start}-${c.finish}</td><td>${esc(c.hospital)}</td><td>${esc(nameOf(c.assistant))}</td><td><span class="tag ${c.status==="Confirmed"?"good":c.status==="Unmatched"?"bad":c.status==="Completed"?"status-completed":c.status==="Cancelled"?"status-cancelled":""}">${esc(c.status)}</span></td></tr>`).join("")+'</table></div>';
 }
 function availabilityList(){
 return data.assistants.map(a=>`<p><strong>${esc(a.name)}</strong> — ${a.availability.length} availability entries</p>`).join("<hr>");
