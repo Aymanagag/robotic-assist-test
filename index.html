@@ -445,17 +445,7 @@ padding:20px;
 </form>
 </div>
 
-<section id="caseManagement" class="panel">
-<h2>Manage master lists</h2>
-<div class="card">
-<p class="muted">Add hospitals, procedures and surgeons for future cases.</p>
-<div class="grid">
-<div><label>New hospital</label><input id="newHospital" placeholder="Hospital name"><button class="secondary" onclick="addMaster('hospitals','newHospital')">Add hospital</button></div>
-<div><label>New procedure</label><input id="newProcedure" placeholder="Procedure name"><button class="secondary" onclick="addMaster('procedures','newProcedure')">Add procedure</button></div>
-<div><label>New surgeon</label><input id="newSurgeon" placeholder="Surgeon name"><button class="secondary" onclick="addMaster('surgeons','newSurgeon')">Add surgeon</button></div>
-</div>
-</div>
-</section>
+
 
 <div class="card">
 <h3>Unmatched cases — require an assistant</h3>
@@ -528,7 +518,19 @@ padding:20px;
   <button class="danger" type="button" onclick="removeOverlapAssistant()">Remove assistant</button>
   <button class="secondary" type="button" onclick="closeOverlapResolution()">Close</button>
 </div>
- 
+
+</section>
+
+<section id="caseManagement" class="panel">
+<h2>Manage master lists</h2>
+<div class="card">
+<p class="muted">Add hospitals, procedures and surgeons for future cases.</p>
+<div class="grid">
+<div><label>New hospital</label><input id="newHospital" placeholder="Hospital name"><button class="secondary" onclick="addMaster('hospitals','newHospital')">Add hospital</button></div>
+<div><label>New procedure</label><input id="newProcedure" placeholder="Procedure name"><button class="secondary" onclick="addMaster('procedures','newProcedure')">Add procedure</button></div>
+<div><label>New surgeon</label><input id="newSurgeon" placeholder="Surgeon name"><button class="secondary" onclick="addMaster('surgeons','newSurgeon')">Add surgeon</button></div>
+</div>
+</div>
 </section>
 
 <section id="users" class="panel">
