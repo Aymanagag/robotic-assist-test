@@ -708,7 +708,7 @@ async function loadUsers() {
       list.innerHTML = '<p class="empty">No registered users found.</p>';
       return;
     }
-    list.innerHTML = '<div class="tablewrap"><table class="user-management-table"><thead><tr><th>Name / email</th><th>Role</th><th>Account</th><th>Assistant access</th><th>Actions</th><th>Created</th></tr></thead><tbody>' +
+    list.innerHTML = '<div class="tablewrap"><table class="user-management-table"><thead><tr><th>Name / email</th><th>Role</th><th>Account</th><th>Assistant access</th><th>Role actions</th><th>Account actions</th><th>Created</th></tr></thead><tbody>' +
       users.map(user => {
         const assistant = Array.isArray(user.assistants) ? user.assistants[0] : user.assistants;
         const access = assistant ? (assistant.active ? "Active" : "Inactive") : "Not configured";
@@ -722,7 +722,8 @@ async function loadUsers() {
           '</div></td><td><span class="user-role ' + (user.role === "admin" ? "admin" : "") + '">' +
           esc(user.role) + '</span></td><td>' + (user.is_active ? '<span class="tag good">Active</span>' : '<span class="tag bad">Inactive</span>') +
           '</td><td>' + esc(access) + '</td><td>' +
-          '<button type="button" class="secondary" onclick="changeUserRole(\'' + esc(user.id) + '\',\'' + roleAction + '\')"' + accountDisabled + '>' + roleLabel + '</button>' +
+          '<button type="button" class="secondary" onclick="changeUserRole(\'' + esc(user.id) + '\',\'' + roleAction + '\')"' + (isSelf ? ' disabled title="You cannot change your own role"' : '') + '>' + roleLabel + '</button>' +
+          '</td><td>' +
           '<button type="button" class="' + (user.is_active ? 'danger' : 'secondary') + '" onclick="changeUserActive(\'' + esc(user.id) + '\',' + (!user.is_active) + ')"' + accountDisabled + '>' + accountAction + '</button>' +
           '</td><td>' + esc(user.created_at ? new Date(user.created_at).toLocaleDateString("en-GB") : "—") +
           '</td></tr>';
