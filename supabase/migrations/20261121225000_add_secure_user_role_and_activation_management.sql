@@ -16,13 +16,13 @@ grant execute on function public.is_admin() to authenticated;
 create or replace function public.admin_set_user_role(p_user_id uuid,p_new_role text)
 returns void language plpgsql security definer set search_path = ''
 as $$
-declare v_actor uuid := (select auth.uid()); v_old_role text; v_name text;
+declare v_actor uuid := (select auth.uid()); v_old_role text; v_name text; v_is_active boolean;
 begin
  if v_actor is null or not public.is_admin() then raise exception 'Active administrator access required'; end if;
  if p_user_id is null or p_new_role not in ('admin','assistant') then raise exception 'Invalid user or role'; end if;
  if p_user_id=v_actor then raise exception 'You cannot change your own administrator role'; end if;
  perform pg_advisory_xact_lock(hashtextextended('robotic_assist_user_admin',0));
- select role,full_name into v_old_role,v_name from public.profiles where id=p_user_id for update;
+ select role,full_name,is_active into v_old_role,v_name,v_is_active from public.profiles where id=p_user_id for update;
  if not found then raise exception 'User not found'; end if;
  if v_old_role=p_new_role then return; end if;
  if v_old_role='admin' and p_new_role='assistant' and
@@ -30,6 +30,10 @@ begin
    raise exception 'The last active administrator cannot be demoted';
  end if;
  update public.profiles set role=p_new_role where id=p_user_id;
+ if p_new_role='assistant' then
+   insert into public.assistants(profile_id,active) values(p_user_id,v_is_active)
+   on conflict(profile_id) do update set active=excluded.active;
+ end if;
  insert into public.audit_logs(actor_id,action,entity_type,entity_id,details)
  values(v_actor,'user_role_changed','profile',p_user_id,jsonb_build_object('full_name',v_name,'previous_role',v_old_role,'new_role',p_new_role));
 end; $$;
