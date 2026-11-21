@@ -40,6 +40,14 @@ th{color:#63748a}
 .small{font-size:12px;color:#718096}
 hr{border:0;border-top:1px solid #e8edf3;margin:15px 0}
 @media(max-width:600px){main{padding:12px}.card{padding:14px}th,td{min-width:95px}}
+.user-management-table td{vertical-align:middle}
+.user-management-name{font-weight:700;color:var(--navy)}
+.user-management-email{overflow-wrap:anywhere;color:#64748b}
+.user-role{display:inline-block;padding:5px 9px;border-radius:20px;background:#e8efff;color:#2455a5;font-size:11px;font-weight:700}
+.user-role.admin{background:#e0e7ff;color:#3730a3}
+.invite-success{color:#166534}
+.invite-error{color:#b91c1c}
+
 .header-account{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid #ffffff30}
 .header-account-name{font-size:13px;color:#e2eaf5;overflow-wrap:anywhere}
 .header-account-name strong{color:#fff}
@@ -397,6 +405,7 @@ padding:20px;
 <button class="active" onclick="show('admin',this)">Administrator</button>
 <button onclick="show('assistant',this)">Assistant Portal</button>
 <button onclick="show('cases',this)">All Cases</button>
+<button id="userManagementNav" onclick="show('users',this)">User Management</button>
 </nav>
 <main>
 
@@ -551,6 +560,29 @@ padding:20px;
 </div>
 </section>
 
+<section id="users" class="panel">
+<h2>User Management</h2>
+<div class="card">
+  <h3>Invite a surgical assistant</h3>
+  <p class="muted">New invitations receive assistant permissions. Only an administrator can send an invitation.</p>
+  <form id="assistantInviteForm">
+    <label for="inviteFullName">Full name</label>
+    <input id="inviteFullName" type="text" maxlength="120" autocomplete="name" required placeholder="Assistant full name">
+    <label for="inviteEmail">Email address</label>
+    <input id="inviteEmail" type="email" maxlength="254" autocomplete="email" required placeholder="name@example.com">
+    <button class="action" id="sendAssistantInviteButton" type="submit">Send invitation</button>
+    <p id="assistantInviteMessage" role="status" aria-live="polite" class="small"></p>
+  </form>
+</div>
+<div class="card">
+  <div class="day-view-toolbar">
+    <div><h3>Registered users</h3><p class="muted">Account details and current application permissions.</p></div>
+    <button type="button" class="secondary" id="refreshUsersButton" onclick="loadUsers()">Refresh list</button>
+  </div>
+  <div id="userManagementList"><p class="empty">Open User Management to load accounts.</p></div>
+</div>
+</section>
+
 <section id="assistant" class="panel">
 <h2>Surgical Assistant Portal</h2>
 <div class="card">
@@ -651,7 +683,80 @@ async function show(id, btn) {
   btn.classList.add("active");
 
   render();
+  if (id === "users") await loadUsers();
 }
+async function loadUsers() {
+  const list = document.getElementById("userManagementList");
+  const refreshButton = document.getElementById("refreshUsersButton");
+  if (list) list.innerHTML = '<p class="empty">Loading registered users…</p>';
+  if (refreshButton) refreshButton.disabled = true;
+  try {
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !userData.user) throw new Error("Please sign in again.");
+    const { data: currentProfile, error: currentProfileError } = await supabaseClient
+      .from("profiles").select("role").eq("id", userData.user.id).single();
+    if (currentProfileError) throw currentProfileError;
+    if (currentProfile.role !== "admin") throw new Error("Administrator access is required.");
+
+    const { data: users, error } = await supabaseClient
+      .from("profiles")
+      .select("id, full_name, email, role, created_at, assistants(active)")
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    if (!users || !users.length) {
+      list.innerHTML = '<p class="empty">No registered users found.</p>';
+      return;
+    }
+    list.innerHTML = '<div class="tablewrap"><table class="user-management-table"><thead><tr><th>Name / email</th><th>Role</th><th>Assistant access</th><th>Created</th></tr></thead><tbody>' +
+      users.map(user => {
+        const assistant = Array.isArray(user.assistants) ? user.assistants[0] : user.assistants;
+        const access = assistant ? (assistant.active ? "Active" : "Inactive") : "Not configured";
+        return '<tr><td><div class="user-management-name">' + esc(user.full_name || "Unnamed user") +
+          '</div><div class="user-management-email">' + esc(user.email || "Email unavailable") +
+          '</div></td><td><span class="user-role ' + (user.role === "admin" ? "admin" : "") + '">' +
+          esc(user.role) + '</span></td><td>' + esc(access) +
+          '</td><td>' + esc(user.created_at ? new Date(user.created_at).toLocaleDateString("en-GB") : "—") +
+          '</td></tr>';
+      }).join("") + '</tbody></table></div>';
+  } catch (error) {
+    if (list) list.innerHTML = '<p class="warning">Could not load users: ' + esc(error.message) + '</p>';
+    console.error("User management load failed:", error);
+  } finally {
+    if (refreshButton) refreshButton.disabled = false;
+  }
+}
+
+document.getElementById("assistantInviteForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = document.getElementById("sendAssistantInviteButton");
+  const message = document.getElementById("assistantInviteMessage");
+  const fullName = document.getElementById("inviteFullName").value.trim();
+  const email = document.getElementById("inviteEmail").value.trim();
+  if (!fullName || !email) return;
+  button.disabled = true;
+  button.textContent = "Sending invitation…";
+  message.className = "small";
+  message.textContent = "";
+  try {
+    const { data: result, error } = await supabaseClient.functions.invoke("invite-assistant", {
+      body: { full_name: fullName, email }
+    });
+    if (error) throw error;
+    if (!result || result.success !== true) throw new Error(result?.message || "The invitation could not be sent.");
+    message.classList.add("invite-success");
+    message.textContent = result.message || "Invitation sent successfully. The new account will have assistant permissions.";
+    event.target.reset();
+    await loadUsers();
+  } catch (error) {
+    message.classList.add("invite-error");
+    message.textContent = "Could not send invitation: " + (error.message || "Please try again.");
+    console.error("Assistant invitation failed:", error);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Send invitation";
+  }
+});
+
 function options(id, items) {
   const el = document.getElementById(id);
   el.innerHTML = items.map(x =>
