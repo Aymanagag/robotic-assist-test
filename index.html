@@ -250,13 +250,13 @@ hr{border:0;border-top:1px solid #e8edf3;margin:15px 0}
 .calendar-completed{background:#16865B;color:#fff}
 .calendar-cancelled{background:#C24141;color:#fff}
 
-.app-header{background:#142b4a;color:#fff;padding:22px 18px 16px}
-.brand-block{max-width:900px;margin:0 auto}
-.advance-logo{display:block;width:min(100%,430px);height:auto;max-height:none;aspect-ratio:1536/581;object-fit:contain;object-position:left center}
-.brand-block p{margin:10px 0 0;color:#e2eaf5;font-size:clamp(15px,2.2vw,22px);letter-spacing:.2px}
-.login-brand{width:100%;max-width:300px;margin:0 auto 16px}
+.app-header{background:#10294b;color:#fff;padding:0}
+.brand-block{width:100%;max-width:none;margin:0 auto}
+.advance-logo{display:block;width:100%;height:auto;max-height:none;aspect-ratio:3/1;object-fit:contain}
+.brand-block p{display:none}
+.login-brand{width:100%;max-width:100%;margin:0 auto 16px}
 .login-brand .advance-logo{width:100%;height:auto}
-@media(max-width:600px){.app-header{padding:16px 14px 14px}.advance-logo{width:min(100%,340px)}.brand-block p{font-size:15px}}
+@media(max-width:600px){.app-header{padding:0}.advance-logo{width:100%;height:auto}.login-brand{max-width:100%}}
 
 </style>
 </head>
@@ -283,16 +283,21 @@ padding:20px;
   max-width:400px;
   box-shadow:0 4px 20px #0002;
   ">
-<div class="login-brand"><svg class="advance-logo" viewBox="0 0 1536 581" role="img" aria-label="Advance Surgical" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
-  <g font-family="Arial, Helvetica, sans-serif" font-weight="700">
-    <text x="225" y="358" font-size="205" fill="#0756a4" letter-spacing="-5">Advance</text>
-    <text x="280" y="558" font-size="205" fill="#08a9a6" letter-spacing="-5">Surgical</text>
-  </g>
-  <g>
-    <path d="M1018 128 L1320 45 L1238 350 Q1120 350 1018 128Z" fill="#0756a4"/>
-    <path d="M1320 45 L1238 350 L1174 500 L1168 190Z" fill="#202052"/>
-    <path d="M1168 190 L1238 350 L1174 500Z" fill="#08a9a6"/>
-  </g>
+<div class="login-brand"><svg class="advance-logo" viewBox="0 0 1536 512" role="img" aria-label="Advance Surgical — Surgical Assistant Availability & Case Allocation" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+<defs><linearGradient id="bannerNavy" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#10294b"/><stop offset="1" stop-color="#0b2344"/></linearGradient></defs>
+<rect width="1536" height="512" fill="url(#bannerNavy)"/>
+<g font-family="Arial, Helvetica, sans-serif" font-weight="700">
+<text x="450" y="199" font-size="112" fill="#0756a4" letter-spacing="-2">Advance</text>
+<text x="482" y="300" font-size="112" fill="#08aaa7" letter-spacing="-2">Surgical</text>
+</g>
+<g>
+<path d="M898 84 L1092 31 L1050 124 Q974 124 898 84Z" fill="#0756a4"/>
+<path d="M1092 31 L1050 124 L1021 218 L984 124Z" fill="#202052"/>
+<path d="M984 124 L1050 124 L1021 218Z" fill="#08aaa7"/>
+<path d="M898 84 Q974 124 984 124 L1021 218" fill="none" stroke="#dce8f5" stroke-width="2"/>
+<path d="M898 84 L1092 31 L1050 124 L1021 218 L984 124Z" fill="none" stroke="#dce8f5" stroke-width="2"/>
+</g>
+<text x="768" y="397" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="400" fill="#e8eef8" letter-spacing=".2">Surgical Assistant Availability &amp; Case Allocation</text>
 </svg></div>
 
     <p style="text-align:center;color:#718096">
@@ -358,18 +363,23 @@ padding:20px;
 </div>
 <header class="app-header">
 <div class="brand-block">
-<svg class="advance-logo" viewBox="0 0 1536 581" role="img" aria-label="Advance Surgical" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
-  <g font-family="Arial, Helvetica, sans-serif" font-weight="700">
-    <text x="225" y="358" font-size="205" fill="#0756a4" letter-spacing="-5">Advance</text>
-    <text x="280" y="558" font-size="205" fill="#08a9a6" letter-spacing="-5">Surgical</text>
-  </g>
-  <g>
-    <path d="M1018 128 L1320 45 L1238 350 Q1120 350 1018 128Z" fill="#0756a4"/>
-    <path d="M1320 45 L1238 350 L1174 500 L1168 190Z" fill="#202052"/>
-    <path d="M1168 190 L1238 350 L1174 500Z" fill="#08a9a6"/>
-  </g>
+<svg class="advance-logo" viewBox="0 0 1536 512" role="img" aria-label="Advance Surgical — Surgical Assistant Availability & Case Allocation" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+<defs><linearGradient id="bannerNavy" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#10294b"/><stop offset="1" stop-color="#0b2344"/></linearGradient></defs>
+<rect width="1536" height="512" fill="url(#bannerNavy)"/>
+<g font-family="Arial, Helvetica, sans-serif" font-weight="700">
+<text x="450" y="199" font-size="112" fill="#0756a4" letter-spacing="-2">Advance</text>
+<text x="482" y="300" font-size="112" fill="#08aaa7" letter-spacing="-2">Surgical</text>
+</g>
+<g>
+<path d="M898 84 L1092 31 L1050 124 Q974 124 898 84Z" fill="#0756a4"/>
+<path d="M1092 31 L1050 124 L1021 218 L984 124Z" fill="#202052"/>
+<path d="M984 124 L1050 124 L1021 218Z" fill="#08aaa7"/>
+<path d="M898 84 Q974 124 984 124 L1021 218" fill="none" stroke="#dce8f5" stroke-width="2"/>
+<path d="M898 84 L1092 31 L1050 124 L1021 218 L984 124Z" fill="none" stroke="#dce8f5" stroke-width="2"/>
+</g>
+<text x="768" y="397" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="400" fill="#e8eef8" letter-spacing=".2">Surgical Assistant Availability &amp; Case Allocation</text>
 </svg>
-<p>Surgical Assistant Availability &amp; Case Allocation</p>
+
 </div>
 <div id="headerAccount" class="header-account" style="display:none;">
   <span class="header-account-name">Signed in as <strong id="headerAccountName"></strong></span>
