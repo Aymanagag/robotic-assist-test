@@ -525,41 +525,7 @@ padding:20px;
   <button class="danger" type="button" onclick="removeOverlapAssistant()">Remove assistant</button>
   <button class="secondary" type="button" onclick="closeOverlapResolution()">Close</button>
 </div>
- <div id="editCasePanel" class="card" style="display:none;">
-  <h3>Edit surgical case</h3>
-
-  <form id="editCaseForm">
-    <input type="hidden" id="editCaseId">
-
-    <label>Hospital</label>
-    <select id="editHospital" required></select>
-
-    <label>Procedure</label>
-    <select id="editProcedure" required></select>
-
-    <label>Surgeon</label>
-    <select id="editSurgeon" required></select>
-
-    <label>Date</label>
-    <input type="date" id="editDate" required>
-
-    <div class="grid">
-      <div>
-        <label>Start time</label>
-        <input type="time" id="editStart" required>
-      </div>
-      <div>
-        <label>Finish time</label>
-        <input type="time" id="editFinish" required>
-      </div>
-    </div>
-
-    <button class="action" type="submit">Save changes</button>
-    <button class="action" type="button" onclick="closeEditCase()">
-      Cancel
-    </button>
-  </form>
-</div>
+ 
 </section>
 
 <section id="users" class="panel">
@@ -615,6 +581,41 @@ padding:20px;
 <section id="cases" class="panel">
 <h2>All Surgical Cases</h2>
 <div id="caseDetailsPanel" class="card" style="display:none" aria-live="polite"></div>
+<div id="editCasePanel" class="card" style="display:none;">
+  <h3>Edit surgical case</h3>
+
+  <form id="editCaseForm">
+    <input type="hidden" id="editCaseId">
+
+    <label>Hospital</label>
+    <select id="editHospital" required></select>
+
+    <label>Procedure</label>
+    <select id="editProcedure" required></select>
+
+    <label>Surgeon</label>
+    <select id="editSurgeon" required></select>
+
+    <label>Date</label>
+    <input type="date" id="editDate" required>
+
+    <div class="grid">
+      <div>
+        <label>Start time</label>
+        <input type="time" id="editStart" required>
+      </div>
+      <div>
+        <label>Finish time</label>
+        <input type="time" id="editFinish" required>
+      </div>
+    </div>
+
+    <button class="action" type="submit">Save changes</button>
+    <button class="action" type="button" onclick="closeEditCase()">
+      Cancel
+    </button>
+  </form>
+</div>
 <div class="card">
 <div id="allCases"></div>
 </div>
