@@ -864,6 +864,25 @@ function returnToCalendarOverview(targetView) {
   loadMasterCalendar();
 }
 
+function shiftCalendarDay(offset) {
+  const input = document.getElementById("calendarDate");
+  const current = input.value || new Date().toISOString().slice(0, 10);
+  const date = new Date(current + "T12:00:00");
+  date.setDate(date.getDate() + offset);
+  input.value = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0")
+  ].join("-");
+  loadMasterCalendar();
+}
+
+function goToCalendarToday() {
+  document.getElementById("calendarDate").value =
+    new Date().toISOString().slice(0, 10);
+  loadMasterCalendar();
+}
+
 function calendarDateLabel(day, options) {
   return new Date(day + "T12:00:00").toLocaleDateString("en-GB", options);
 }
@@ -937,6 +956,11 @@ function calendarDateLabel(day, options) {
         <button type="button" class="secondary" onclick="returnToCalendarOverview('${calendarPreviousView}')">
           ← Back to ${calendarPreviousView === "month" ? "Month" : "Week"}
         </button>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <button type="button" class="secondary" onclick="shiftCalendarDay(-1)" aria-label="Previous day">← Previous</button>
+          <button type="button" class="secondary" onclick="goToCalendarToday()">Today</button>
+          <button type="button" class="secondary" onclick="shiftCalendarDay(1)" aria-label="Next day">Next →</button>
+        </div>
         <h3>${calendarDateLabel(selectedDate, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</h3>
       </div>
       <h4>Surgical cases (${dayCases.length})</h4>`;
