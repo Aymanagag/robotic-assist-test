@@ -1385,63 +1385,52 @@ ${status !== "Cancelled" ? `
 async function invite(id) {
   try {
     const assistantId = document.getElementById("assign" + id).value;
+    if (!assistantId) throw new Error("Please select an assistant.");
 
-    if (!assistantId) {
-      throw new Error("Please select an assistant.");
-    }
-
-    const { data: result, error } = await supabaseClient.rpc(
+    const { data: matches, error: matchingError } = await supabaseClient.rpc(
       "check_assistant_matching",
       { p_case_id: id }
     );
+    if (matchingError) throw matchingError;
 
-    if (error) throw error;
-
-    const match = result.find(
-      a => a.assistant_id === assistantId
+    const match = (matches || []).find(
+      a => String(a.assistant_id) === String(assistantId)
     );
+    if (!match) throw new Error("Assistant matching information was not found.");
 
-    if (!match) {
-      throw new Error("Assistant matching information was not found.");
-    }
-
+    const warnings = [];
     if (match.booking_conflict) {
-      throw new Error(
-        "This assistant has an overlapping booking. Allocation is not permitted."
+      warnings.push(
+        "BOOKING OVERLAP: This assistant already has another invited or confirmed case that overlaps with this case. Proceeding may double-book the assistant."
+      );
+    }
+    if (!match.availability_match) {
+      warnings.push(
+        match.explicitly_unavailable
+          ? "UNAVAILABLE: This assistant has explicitly marked themselves unavailable on this date."
+          : match.availability_submitted
+            ? "AVAILABILITY GAP: Their submitted hours do not cover the full case time."
+            : "AVAILABILITY UNCONFIRMED: This assistant has not submitted availability for this date."
       );
     }
 
     let override = false;
     let reason = null;
-
-    if (!match.availability_match) {
-      const warningMessage = match.explicitly_unavailable
-        ? "IMPORTANT: This assistant has explicitly marked themselves UNAVAILABLE on this date. " +
-          "Assigning them would override their stated unavailability. " +
-          "Only proceed if you have checked with the assistant and have a valid operational reason. " +
-          "Do you want to continue?"
-        : match.availability_submitted
-          ? "This assistant submitted availability, but it does not cover the full case time. " +
-            "The case may fall partly or wholly outside the hours they offered. " +
-            "Do you want to continue with an override?"
-          : "This assistant has not submitted availability for this date. " +
-            "Their availability is unconfirmed. Do you want to continue with an override?";
-
-      override = confirm(warningMessage);
-
-      if (!override) return;
+    if (warnings.length) {
+      const proceed = confirm(
+        warnings.join("\\n\\n") +
+        "\\n\\nDo you want to override these warnings and send the invitation?"
+      );
+      if (!proceed) return;
 
       reason = prompt(
-        match.explicitly_unavailable
-          ? "Record why you are overriding the assistant's explicit unavailability:"
-          : match.availability_submitted
-            ? "Record why you are proceeding despite the submitted hours not covering the full case:"
-            : "Record why you are proceeding without submitted availability:"
+        "Record the reason for proceeding despite the warning" +
+        (match.booking_conflict ? " (including the booking overlap)" : "") +
+        ":"
       );
-
-      if (!reason || !reason.trim()) {
-        throw new Error("An override reason is required.");
-      }
+      if (reason === null) return;
+      if (!reason.trim()) throw new Error("An override reason is required.");
+      override = true;
     }
 
     const { error: allocationError } = await supabaseClient.rpc(
@@ -1453,12 +1442,10 @@ async function invite(id) {
         p_override_reason: reason
       }
     );
-
     if (allocationError) throw allocationError;
 
     await loadCases();
     alert("Invitation sent. Awaiting assistant acceptance.");
-
   } catch (error) {
     alert("Could not allocate assistant: " + error.message);
     console.error(error);
