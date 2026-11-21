@@ -261,8 +261,32 @@ padding:20px;
         Sign in
       </button>
 
+      <button type="button" class="action" id="forgotPasswordButton"
+        style="width:100%;margin-top:10px;background:#64748b">
+        Forgot password?
+      </button>
+
       <p id="loginError"
       style="color:#c0392b;font-size:13px"></p>
+    </form>
+
+    <form id="passwordResetRequestForm" style="display:none">
+      <p style="color:#475569">Enter your account email address. We will send you a secure password-reset link.</p>
+      <label>Email address</label>
+      <input type="email" id="resetEmail" required autocomplete="email" placeholder="Enter your email">
+      <button type="submit" class="action" id="sendResetButton" style="width:100%">Send reset link</button>
+      <button type="button" class="action" id="backToLoginFromReset" style="width:100%;margin-top:8px;background:#64748b">Back to sign in</button>
+      <p id="resetRequestMessage" style="font-size:13px"></p>
+    </form>
+
+    <form id="passwordRecoveryForm" style="display:none">
+      <p style="color:#475569">Choose a new password for your account.</p>
+      <label>New password</label>
+      <input type="password" id="newPassword" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters">
+      <label>Confirm new password</label>
+      <input type="password" id="confirmNewPassword" required minlength="8" autocomplete="new-password" placeholder="Re-enter new password">
+      <button type="submit" class="action" id="updatePasswordButton" style="width:100%">Update password</button>
+      <p id="passwordRecoveryMessage" style="font-size:13px"></p>
     </form>
   </div>
 </div>
@@ -1529,7 +1553,101 @@ async function signOutUser() {
   }
 }
 
-// SUPABASE AUTHENTICATION
+// SUPABASE AUTHENTICATION AND PASSWORD RECOVERY
+const loginForm = document.getElementById("loginForm");
+const resetRequestForm = document.getElementById("passwordResetRequestForm");
+const recoveryForm = document.getElementById("passwordRecoveryForm");
+
+function showAuthForm(formToShow) {
+  loginForm.style.display = formToShow === loginForm ? "block" : "none";
+  resetRequestForm.style.display = formToShow === resetRequestForm ? "block" : "none";
+  recoveryForm.style.display = formToShow === recoveryForm ? "block" : "none";
+}
+
+document.getElementById("forgotPasswordButton").addEventListener("click", () => {
+  const email = document.getElementById("loginEmail").value.trim();
+  document.getElementById("resetEmail").value = email;
+  document.getElementById("resetRequestMessage").textContent = "";
+  showAuthForm(resetRequestForm);
+});
+
+document.getElementById("backToLoginFromReset").addEventListener("click", () => {
+  document.getElementById("loginError").textContent = "";
+  showAuthForm(loginForm);
+});
+
+resetRequestForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const button = document.getElementById("sendResetButton");
+  const message = document.getElementById("resetRequestMessage");
+  button.disabled = true;
+  button.textContent = "Sending...";
+  message.textContent = "";
+
+  try {
+    const email = document.getElementById("resetEmail").value.trim();
+    const redirectTo = window.location.origin + window.location.pathname;
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+      redirectTo
+    });
+    if (error) throw error;
+    message.style.color = "#166534";
+    message.textContent = "If an account exists for that email, a password-reset link has been sent. Please check your inbox and spam folder.";
+  } catch (error) {
+    message.style.color = "#c0392b";
+    message.textContent = "Could not send the reset link: " + error.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = "Send reset link";
+  }
+});
+
+recoveryForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const button = document.getElementById("updatePasswordButton");
+  const message = document.getElementById("passwordRecoveryMessage");
+  const password = document.getElementById("newPassword").value;
+  const confirmation = document.getElementById("confirmNewPassword").value;
+
+  if (password.length < 8) {
+    message.style.color = "#c0392b";
+    message.textContent = "Password must be at least 8 characters.";
+    return;
+  }
+  if (password !== confirmation) {
+    message.style.color = "#c0392b";
+    message.textContent = "The passwords do not match.";
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "Updating...";
+  message.textContent = "";
+  try {
+    const { error } = await supabaseClient.auth.updateUser({ password });
+    if (error) throw error;
+    message.style.color = "#166534";
+    message.textContent = "Your password has been updated. You can now sign in with your new password.";
+    await supabaseClient.auth.signOut();
+    document.getElementById("loginPassword").value = "";
+    showAuthForm(loginForm);
+  } catch (error) {
+    message.style.color = "#c0392b";
+    message.textContent = "Could not update password: " + error.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = "Update password";
+  }
+});
+
+supabaseClient.auth.onAuthStateChange((event) => {
+  if (event === "PASSWORD_RECOVERY") {
+    document.getElementById("loginScreen").style.display = "flex";
+    document.getElementById("passwordRecoveryMessage").textContent = "";
+    showAuthForm(recoveryForm);
+  }
+});
+
 document.getElementById("loginForm").addEventListener("submit", async function(e) {
   e.preventDefault();
 
