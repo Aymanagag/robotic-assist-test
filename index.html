@@ -435,7 +435,14 @@ padding:20px;
       <div><label>New start time</label><input type="time" id="overlapNewStart" required></div>
       <div><label>New finish time</label><input type="time" id="overlapNewFinish" required></div>
     </div>
-    <button class="action" type="submit">Save new date/time</button>
+    <label for="overlapInvitationChoice">What should happen to the current assistant invitation?</label>
+    <select id="overlapInvitationChoice" required>
+      <option value="">Choose KEEP or WITHDRAW</option>
+      <option value="keep">KEEP assistant and invitation</option>
+      <option value="withdraw">WITHDRAW invitation and return case to unmatched</option>
+    </select>
+    <p class="small">KEEP preserves the current assistant assignment and invitation/confirmation. WITHDRAW releases the assistant after the timing change and returns the case to the unmatched queue.</p>
+    <button class="action" type="submit">Save date/time and apply choice</button>
   </form>
   <hr>
   <h4>2. Change assistant</h4>
@@ -1475,14 +1482,21 @@ document.getElementById("overlapTimingForm").addEventListener("submit", async (e
   const newDate = document.getElementById("overlapNewDate").value;
   const newStart = document.getElementById("overlapNewStart").value;
   const newFinish = document.getElementById("overlapNewFinish").value;
+  const invitationChoice = document.getElementById("overlapInvitationChoice").value;
   if (!caseRecord) { alert("Case not found. Refresh and try again."); return; }
   if (!newDate || !newStart || !newFinish || newStart >= newFinish) {
     alert("Enter a valid date and a finish time after the start time."); return;
   }
+  if (!["keep", "withdraw"].includes(invitationChoice)) {
+    alert("Please explicitly choose KEEP or WITHDRAW. No changes have been made."); return;
+  }
   const reason = prompt("Why is the date or timing being changed to resolve this overlap?");
   if (reason === null) return;
   if (!reason.trim()) { alert("A reason for changing the case timing is required."); return; }
-  if (!confirm("Change this case to " + newDate + " " + newStart + "–" + newFinish + "? The current assistant assignment and invitation status will be preserved. The assistant must be notified separately.")) return;
+  const choiceDescription = invitationChoice === "keep"
+    ? "KEEP the current assistant and invitation/confirmation."
+    : "WITHDRAW the invitation and return the case to the unmatched queue after changing the timing.";
+  if (!confirm("Change this case to " + newDate + " " + newStart + "–" + newFinish + " and " + choiceDescription + " The assistant must be notified separately if KEEP is selected.")) return;
 
   const button = e.target.querySelector('button[type="submit"]');
   button.disabled = true;
@@ -1508,8 +1522,25 @@ document.getElementById("overlapTimingForm").addEventListener("submit", async (e
     }
     if (result.error) throw result.error;
     await loadCases();
+    if (invitationChoice === "withdraw") {
+      const currentCase = data.cases.find(c => c.id === caseId);
+      if (!currentCase || !currentCase.assistant) {
+        closeOverlapResolution();
+        alert("Case date/time updated and the assistant assignment is already withdrawn.");
+        return;
+      }
+      await removeAssignedAssistant(caseId);
+      const refreshedCase = data.cases.find(c => c.id === caseId);
+      if (refreshedCase && !refreshedCase.assistant) {
+        closeOverlapResolution();
+        alert("Case date/time updated. The assistant invitation was withdrawn and the case returned to unmatched.");
+      } else {
+        alert("The case date/time was updated, but the assistant could not be withdrawn. The current assignment remains in place. Please review the case before taking further action.");
+      }
+      return;
+    }
     closeOverlapResolution();
-    alert("Case date/time updated. The assistant assignment and invitation status were preserved. Please notify the assistant separately.");
+    alert("Case date/time updated. The assistant assignment and invitation/confirmation were preserved. Please notify the assistant separately.");
   } catch (error) {
     alert("Could not change case date/time: " + error.message);
     console.error(error);
