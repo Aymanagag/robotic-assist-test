@@ -45,6 +45,19 @@ hr{border:0;border-top:1px solid #e8edf3;margin:15px 0}
 .header-account-name strong{color:#fff}
 .header-account button{margin:0;background:#ffffff18;color:#fff;border:1px solid #ffffff70;border-radius:7px;padding:8px 12px;font-weight:bold;cursor:pointer}
 .header-account button:disabled{opacity:.6;cursor:wait}
+.notification-wrap{position:relative}
+.header-account .notification-wrap>button{background:#ffffff18;color:#fff;border:1px solid #ffffff70}
+.notification-count{display:inline-flex;min-width:19px;height:19px;align-items:center;justify-content:center;border-radius:20px;background:#dc2626;color:#fff;font-size:11px;margin-left:4px;padding:0 5px}
+.notification-panel{position:absolute;right:0;top:42px;width:min(360px,calc(100vw - 28px));max-height:420px;overflow:auto;background:#fff;color:#203047;border:1px solid #dbe3ed;border-radius:10px;box-shadow:0 8px 28px #0003;z-index:100000;padding:12px}
+.notification-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:8px;border-bottom:1px solid #e8edf3}
+.header-account .notification-panel-heading button{color:#2563eb;background:transparent;border:0;padding:4px;font-size:12px}
+.notification-item{padding:10px 4px;border-bottom:1px solid #edf1f5}
+.notification-item.unread{background:#eff6ff;margin:0 -6px;padding:10px;border-radius:6px}
+.notification-item strong{display:block;font-size:13px;color:#142b4a}
+.notification-item p{margin:4px 0;font-size:12px;line-height:1.4;color:#475569}
+.notification-item time{font-size:10px;color:#718096}
+.notification-item button{margin:5px 0 0!important;padding:4px 7px!important;font-size:11px!important}
+
  /* Case status colours */
 .status-card.status-unmatched,
 #unmatchedList .status-card {
@@ -331,6 +344,13 @@ padding:20px;
 <p>Surgical Assistant Availability & Case Allocation</p>
 <div id="headerAccount" class="header-account" style="display:none;">
   <span class="header-account-name">Signed in as <strong id="headerAccountName"></strong></span>
+  <div class="notification-wrap">
+    <button id="notificationButton" type="button" onclick="toggleNotifications()" aria-expanded="false">Notifications <span id="notificationCount" class="notification-count">0</span></button>
+    <div id="notificationPanel" class="notification-panel" style="display:none">
+      <div class="notification-panel-heading"><strong>Notifications</strong><button type="button" onclick="markAllNotificationsRead()">Mark all read</button></div>
+      <div id="notificationList"><p class="small">Loading notifications…</p></div>
+    </div>
+  </div>
   <button id="signOutButton" type="button" onclick="signOutUser()">Sign out</button>
 </div>
 </header>
@@ -1942,12 +1962,97 @@ if(response==="Declined"){c.status="Unmatched";c.assistant=null;}
 else c.status="Confirmed";
 save();alert(response==="Confirmed"?"Booking confirmed.":"Invitation declined. Case returned to unmatched queue.");
 }
+// IN-APP NOTIFICATIONS
+let notificationChannel = null;
+let notificationRecipientId = null;
+let notificationRows = [];
+
+function toggleNotifications() {
+  const panel = document.getElementById("notificationPanel");
+  const button = document.getElementById("notificationButton");
+  const opening = panel.style.display === "none";
+  panel.style.display = opening ? "block" : "none";
+  button.setAttribute("aria-expanded", String(opening));
+}
+
+function renderNotifications() {
+  const unread = notificationRows.filter(n => !n.read_at).length;
+  document.getElementById("notificationCount").textContent = unread > 99 ? "99+" : String(unread);
+  const list = document.getElementById("notificationList");
+  if (!notificationRows.length) {
+    list.innerHTML = '<p class="small">You have no notifications.</p>';
+    return;
+  }
+  list.innerHTML = notificationRows.map(n => `
+    <div class="notification-item ${n.read_at ? "" : "unread"}">
+      <strong>${esc(n.title)}</strong>
+      <p>${esc(n.message)}</p>
+      <time>${new Date(n.created_at).toLocaleString()}</time>
+      ${n.read_at ? "" : `<br><button class="secondary" type="button" onclick="markNotificationRead('${esc(n.id)}')">Mark as read</button>`}
+    </div>`).join("");
+}
+
+async function loadNotifications() {
+  if (!notificationRecipientId) return;
+  const { data: rows, error } = await supabaseClient
+    .from("notifications")
+    .select("id, notification_type, title, message, case_id, created_at, read_at")
+    .eq("recipient_id", notificationRecipientId)
+    .order("created_at", { ascending: false })
+    .limit(40);
+  if (error) throw error;
+  notificationRows = rows || [];
+  renderNotifications();
+}
+
+async function markNotificationRead(id) {
+  const { error } = await supabaseClient.from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("id", id).eq("recipient_id", notificationRecipientId);
+  if (error) { alert("Could not mark notification as read: " + error.message); return; }
+  await loadNotifications();
+}
+
+async function markAllNotificationsRead() {
+  const unreadIds = notificationRows.filter(n => !n.read_at).map(n => n.id);
+  if (!unreadIds.length) return;
+  const { error } = await supabaseClient.from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .in("id", unreadIds).eq("recipient_id", notificationRecipientId);
+  if (error) { alert("Could not mark notifications as read: " + error.message); return; }
+  await loadNotifications();
+}
+
+async function startNotifications() {
+  const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+  if (userError || !userData.user) return;
+  notificationRecipientId = userData.user.id;
+  if (notificationChannel) {
+    await supabaseClient.removeChannel(notificationChannel);
+    notificationChannel = null;
+  }
+  try {
+    await loadNotifications();
+  } catch (error) {
+    console.error("Could not load notifications:", error);
+    document.getElementById("notificationList").innerHTML =
+      '<p class="small">Notifications are temporarily unavailable.</p>';
+  }
+  notificationChannel = supabaseClient.channel("user-notifications-" + notificationRecipientId)
+    .on("postgres_changes", {
+      event: "*", schema: "public", table: "notifications",
+      filter: "recipient_id=eq." + notificationRecipientId
+    }, () => loadNotifications().catch(error => console.error("Notification refresh failed:", error)))
+    .subscribe();
+}
+
 // AUTHENTICATED ACCOUNT DISPLAY AND SIGN OUT
 function updateAccountDisplay(name) {
   const account = document.getElementById("headerAccount");
   const nameElement = document.getElementById("headerAccountName");
   nameElement.textContent = name || "Account";
   account.style.display = "flex";
+  startNotifications();
 }
 
 async function signOutUser() {
