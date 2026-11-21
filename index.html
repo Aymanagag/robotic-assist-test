@@ -1728,16 +1728,24 @@ async function restoreAdminSession() {
     updateAccountDisplay(profile.full_name || sessionData.session.user.email);
 
 if (profile.role === "admin") {
+  // Restore administrator access independently of assistant-profile availability.
+  document.getElementById("loginScreen").style.display = "none";
+
   await loadMasterLists();
   await loadAssistants();
-
-  // Load the administrator's own assistant account
-  await loadMyAssistant();
-  await loadMyInvitations();
-
   await loadCases();
 
-  document.getElementById("loginScreen").style.display = "none";
+  // Administrators may also work as assistants when they have an active
+  // assistant record. Its absence must never invalidate the admin session.
+  try {
+    await loadMyAssistant();
+    if (currentAssistantId) await loadMyInvitations();
+  } catch (assistantError) {
+    currentAssistantId = null;
+    document.getElementById("assistantAccountName").textContent =
+      "Assistant access is not yet configured for this administrator.";
+    console.warn("Administrator assistant profile not available:", assistantError);
+  }
 
     } else if (profile.role === "assistant") {
       await loadAssistants();
