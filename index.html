@@ -407,6 +407,7 @@ padding:20px;
 <button class="active" onclick="show('admin',this)">Administrator</button>
 <button onclick="show('assistant',this)">Assistant Portal</button>
 <button onclick="show('cases',this)">All Cases</button>
+<button onclick="show('caseManagement',this)">Case Management</button>
 <button id="userManagementNav" onclick="show('users',this)">User Management</button>
 </nav>
 <main>
@@ -444,6 +445,8 @@ padding:20px;
 </form>
 </div>
 
+<section id="caseManagement" class="panel">
+<h2>Case Management</h2>
 <div class="card">
 <h3>Manage master lists</h3>
 <p class="muted">Add hospitals, procedures and surgeons for future cases.</p>
@@ -453,11 +456,11 @@ padding:20px;
 <div><label>New surgeon</label><input id="newSurgeon" placeholder="Surgeon name"><button class="secondary" onclick="addMaster('surgeons','newSurgeon')">Add surgeon</button></div>
 </div>
 </div>
-
 <div class="card">
 <h3>Unmatched cases — require an assistant</h3>
 <div id="unmatchedList"></div>
 </div>
+</section>
 
 <div class="card">
 <h3>Matched — awaiting assistant acceptance</h3>
