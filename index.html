@@ -423,6 +423,31 @@ padding:20px;
 <h3>Assistant availability overview</h3>
 <div id="availabilityOverview"></div>
 </div>
+ <div id="overlapResolutionPanel" class="card" style="display:none;border:2px solid #dc2626;">
+  <h3>Resolve assistant booking overlap</h3>
+  <p id="overlapResolutionSummary" class="muted"></p>
+  <div class="warning">Choose one resolution. No change will be made until you submit and confirm it.</div>
+  <hr>
+  <h4>1. Change case date or timing</h4>
+  <form id="overlapTimingForm">
+    <label>New date</label><input type="date" id="overlapNewDate" required>
+    <div class="grid">
+      <div><label>New start time</label><input type="time" id="overlapNewStart" required></div>
+      <div><label>New finish time</label><input type="time" id="overlapNewFinish" required></div>
+    </div>
+    <button class="action" type="submit">Save new date/time</button>
+  </form>
+  <hr>
+  <h4>2. Change assistant</h4>
+  <label>Replacement assistant</label>
+  <select id="overlapChangeAssistant"></select>
+  <button class="action" type="button" onclick="changeOverlapAssistant()">Change assistant</button>
+  <hr>
+  <h4>3. Remove assistant</h4>
+  <p class="small">Release the current assistant and return this case to the unmatched queue. The case date and time will remain unchanged.</p>
+  <button class="danger" type="button" onclick="removeOverlapAssistant()">Remove assistant</button>
+  <button class="secondary" type="button" onclick="closeOverlapResolution()">Close</button>
+</div>
  <div id="editCasePanel" class="card" style="display:none;">
   <h3>Edit surgical case</h3>
 
@@ -617,20 +642,45 @@ async function addMaster(type, inputId) {
       throw new Error("Finish time must be after start time.");
     }
 
-    const { error } = await supabaseClient.rpc("update_surgical_case", {
-      p_case_id: document.getElementById("editCaseId").value,
+    const caseId = document.getElementById("editCaseId").value;
+    const caseRecord = data.cases.find(c => c.id === caseId);
+    let keepAssignment = false;
+
+    if (caseRecord && caseRecord.assistant && ["Invited", "Confirmed"].includes(caseRecord.status)) {
+      const choice = prompt(
+        "This case currently has an assistant assigned (" + nameOf(caseRecord.assistant) + ").\n\n" +
+        "Type KEEP to preserve the assistant and their current invitation/confirmation.\n" +
+        "Type WITHDRAW to withdraw the invitation and return the case to the unmatched queue.\n\n" +
+        "No change will be made if you cancel."
+      );
+      if (choice === null) return;
+      const normalizedChoice = choice.trim().toUpperCase();
+      if (!["KEEP", "WITHDRAW"].includes(normalizedChoice)) {
+        throw new Error("Please enter KEEP or WITHDRAW. No changes have been made.");
+      }
+      keepAssignment = normalizedChoice === "KEEP";
+      if (!keepAssignment && !confirm("Confirm withdrawal of the current assistant invitation and return this case to unmatched?")) return;
+    }
+
+    const { error } = await supabaseClient.rpc("update_surgical_case_with_choice", {
+      p_case_id: caseId,
       p_hospital_id: document.getElementById("editHospital").value,
       p_procedure_id: document.getElementById("editProcedure").value,
       p_surgeon_id: document.getElementById("editSurgeon").value,
       p_case_date: document.getElementById("editDate").value,
       p_start_time: start,
-      p_finish_time: finish
+      p_finish_time: finish,
+      p_keep_assignment: keepAssignment
     });
 
     if (error) throw error;
 
     closeEditCase();
-    alert("Case updated successfully. Any previous assistant invitation has been withdrawn.");
+    alert(keepAssignment
+      ? "Case updated. The existing assistant assignment and invitation/confirmation have been preserved. Please notify the assistant of any changed details."
+      : caseRecord && caseRecord.assistant
+        ? "Case updated. The assistant invitation was withdrawn and the case returned to unmatched."
+        : "Case updated successfully.");
 
     await loadCases();
 
@@ -1366,14 +1416,107 @@ async function completeCase(id) {
   let a = data.assistants.find(x => x.id == id);
   return a ? a.name : "Not assigned";
 }
+let overlapResolutionCaseId = null;
+
 function openOverlapCase(id) {
   const caseRecord = data.cases.find(c => c.id === id);
   if (!caseRecord) {
     alert("Could not find this case in the current case list. Please refresh the calendar and try again.");
     return;
   }
-  editCase(id);
+  if (!caseRecord.assistant || !["Invited", "Confirmed"].includes(caseRecord.status)) {
+    alert("This case no longer has an active assistant assignment. Refresh the calendar and review the case.");
+    return;
+  }
+  overlapResolutionCaseId = id;
+  document.getElementById("overlapResolutionSummary").textContent =
+    caseRecord.procedure + " · " + caseRecord.date + " · " + caseRecord.start + "–" + caseRecord.finish +
+    " · Currently assigned: " + nameOf(caseRecord.assistant);
+  document.getElementById("overlapNewDate").value = caseRecord.date;
+  document.getElementById("overlapNewStart").value = caseRecord.start;
+  document.getElementById("overlapNewFinish").value = caseRecord.finish;
+  const replacementSelect = document.getElementById("overlapChangeAssistant");
+  replacementSelect.innerHTML = data.assistants
+    .filter(a => String(a.id) !== String(caseRecord.assistant))
+    .map(a => '<option value="' + esc(a.id) + '">' + esc(a.name) + '</option>').join("");
+  document.getElementById("overlapResolutionPanel").style.display = "block";
+  document.getElementById("overlapResolutionPanel").scrollIntoView({behavior:"smooth",block:"start"});
 }
+
+function closeOverlapResolution() {
+  document.getElementById("overlapResolutionPanel").style.display = "none";
+  overlapResolutionCaseId = null;
+}
+
+async function changeOverlapAssistant() {
+  if (!overlapResolutionCaseId) return;
+  const caseId = overlapResolutionCaseId;
+  const previousAssistant = data.cases.find(c => c.id === caseId)?.assistant;
+  await changeAssignedAssistant(caseId);
+  const updatedCase = data.cases.find(c => c.id === caseId);
+  if (updatedCase && String(updatedCase.assistant) !== String(previousAssistant)) {
+    closeOverlapResolution();
+  }
+}
+
+async function removeOverlapAssistant() {
+  if (!overlapResolutionCaseId) return;
+  const caseId = overlapResolutionCaseId;
+  await removeAssignedAssistant(caseId);
+  const updatedCase = data.cases.find(c => c.id === caseId);
+  if (updatedCase && !updatedCase.assistant) closeOverlapResolution();
+}
+
+document.getElementById("overlapTimingForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!overlapResolutionCaseId) return;
+  const caseId = overlapResolutionCaseId;
+  const caseRecord = data.cases.find(c => c.id === caseId);
+  const newDate = document.getElementById("overlapNewDate").value;
+  const newStart = document.getElementById("overlapNewStart").value;
+  const newFinish = document.getElementById("overlapNewFinish").value;
+  if (!caseRecord) { alert("Case not found. Refresh and try again."); return; }
+  if (!newDate || !newStart || !newFinish || newStart >= newFinish) {
+    alert("Enter a valid date and a finish time after the start time."); return;
+  }
+  const reason = prompt("Why is the date or timing being changed to resolve this overlap?");
+  if (reason === null) return;
+  if (!reason.trim()) { alert("A reason for changing the case timing is required."); return; }
+  if (!confirm("Change this case to " + newDate + " " + newStart + "–" + newFinish + "? The current assistant assignment and invitation status will be preserved. The assistant must be notified separately.")) return;
+
+  const button = e.target.querySelector('button[type="submit"]');
+  button.disabled = true;
+  try {
+    const args = {
+      p_case_id: caseId,
+      p_case_date: newDate,
+      p_start_time: newStart,
+      p_finish_time: newFinish,
+      p_reason: reason.trim(),
+      p_override_availability: false,
+      p_override_reason: null
+    };
+    let result = await supabaseClient.rpc("change_case_timing", args);
+    if (result.error && result.error.message.includes("Availability warning:")) {
+      if (!confirm(result.error.message + "\n\nDo you want to proceed despite this availability warning?")) return;
+      const overrideReason = prompt("Record the reason for overriding the assistant availability warning:");
+      if (overrideReason === null) return;
+      if (!overrideReason.trim()) { alert("An availability override reason is required."); return; }
+      args.p_override_availability = true;
+      args.p_override_reason = overrideReason.trim();
+      result = await supabaseClient.rpc("change_case_timing", args);
+    }
+    if (result.error) throw result.error;
+    await loadCases();
+    closeOverlapResolution();
+    alert("Case date/time updated. The assistant assignment and invitation status were preserved. Please notify the assistant separately.");
+  } catch (error) {
+    alert("Could not change case date/time: " + error.message);
+    console.error(error);
+  } finally {
+    button.disabled = false;
+  }
+});
 
 function editCase(id) {
   const c = data.cases.find(x => x.id === id);
@@ -1538,7 +1681,10 @@ async function changeAssignedAssistant(caseId) {
   try {
     const caseRecord = data.cases.find(c => c.id === caseId);
     if (!caseRecord || !caseRecord.assistant) throw new Error("The current assistant assignment could not be found.");
-    const select = document.getElementById("changeAssign" + caseId);
+    const resolutionPanel = document.getElementById("overlapResolutionPanel");
+    const select = resolutionPanel && resolutionPanel.style.display !== "none"
+      ? document.getElementById("overlapChangeAssistant")
+      : document.getElementById("changeAssign" + caseId);
     const newAssistantId = select && select.value;
     if (!newAssistantId) throw new Error("Please select a replacement assistant.");
     if (String(newAssistantId) === String(caseRecord.assistant)) throw new Error("Please select a different assistant.");
