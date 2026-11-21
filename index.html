@@ -1426,25 +1426,20 @@ function closeOverlapResolution() {
 async function changeOverlapAssistant() {
   if (!overlapResolutionCaseId) return;
   const caseId = overlapResolutionCaseId;
-  const selected = document.getElementById("overlapChangeAssistant").value;
-  const existingSelect = document.getElementById("changeAssign" + caseId);
-  const temporarySelect = document.createElement("select");
-  temporarySelect.id = "changeAssign" + caseId;
-  temporarySelect.style.display = "none";
-  temporarySelect.innerHTML = '<option value="' + esc(selected) + '">' + esc(nameOf(selected)) + '</option>';
-  document.body.appendChild(temporarySelect);
-  try {
-    await changeAssignedAssistant(caseId);
-  } finally {
-    temporarySelect.remove();
+  const previousAssistant = data.cases.find(c => c.id === caseId)?.assistant;
+  await changeAssignedAssistant(caseId);
+  const updatedCase = data.cases.find(c => c.id === caseId);
+  if (updatedCase && String(updatedCase.assistant) !== String(previousAssistant)) {
+    closeOverlapResolution();
   }
 }
 
 async function removeOverlapAssistant() {
   if (!overlapResolutionCaseId) return;
-  await removeAssignedAssistant(overlapResolutionCaseId);
-  await loadCases();
-  closeOverlapResolution();
+  const caseId = overlapResolutionCaseId;
+  await removeAssignedAssistant(caseId);
+  const updatedCase = data.cases.find(c => c.id === caseId);
+  if (updatedCase && !updatedCase.assistant) closeOverlapResolution();
 }
 
 document.getElementById("overlapTimingForm").addEventListener("submit", async (e) => {
@@ -1661,7 +1656,10 @@ async function changeAssignedAssistant(caseId) {
   try {
     const caseRecord = data.cases.find(c => c.id === caseId);
     if (!caseRecord || !caseRecord.assistant) throw new Error("The current assistant assignment could not be found.");
-    const select = document.getElementById("changeAssign" + caseId) || document.getElementById("overlapChangeAssistant");
+    const resolutionPanel = document.getElementById("overlapResolutionPanel");
+    const select = resolutionPanel && resolutionPanel.style.display !== "none"
+      ? document.getElementById("overlapChangeAssistant")
+      : document.getElementById("changeAssign" + caseId);
     const newAssistantId = select && select.value;
     if (!newAssistantId) throw new Error("Please select a replacement assistant.");
     if (String(newAssistantId) === String(caseRecord.assistant)) throw new Error("Please select a different assistant.");
