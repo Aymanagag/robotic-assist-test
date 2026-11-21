@@ -32,9 +32,6 @@ begin
   set status = 'completed', completed_at = now(), completed_by = auth.uid(), updated_at = now()
   where id = p_case_id;
 
-  update public.invitations set status = 'completed'
-  where case_id = p_case_id and assistant_id = v_case.assistant_id and status = 'accepted';
-
   insert into public.audit_logs(actor_id, action, entity_type, entity_id, details)
   values (auth.uid(), 'case_completed', 'surgical_case', p_case_id,
     jsonb_build_object('previous_status', v_case.status, 'assistant_id', v_case.assistant_id));
