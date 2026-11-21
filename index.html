@@ -1277,6 +1277,7 @@ ${status !== "Cancelled" ? `
               ).join("")}
             </select>
             <button class="action" onclick="changeAssignedAssistant(&quot;${esc(c.id)}&quot;)">Change assistant</button>
+            <button class="danger" onclick="removeAssignedAssistant(&quot;${esc(c.id)}&quot;)">Remove assistant</button>
           `
       }
     </div>
@@ -1405,6 +1406,25 @@ async function changeAssignedAssistant(caseId) {
     alert("The previous assistant has been released and a new invitation has been sent. The case details are unchanged.");
   } catch (error) {
     alert("Could not change assistant: " + error.message);
+    console.error(error);
+  }
+}
+async function removeAssignedAssistant(caseId) {
+  try {
+    const caseRecord = data.cases.find(c => c.id === caseId);
+    if (!caseRecord || !caseRecord.assistant) throw new Error("The current assistant assignment could not be found.");
+    const reason = prompt("Why is the currently assigned assistant being removed?");
+    if (reason === null) return;
+    if (!reason.trim()) throw new Error("A reason for removing the assistant is required.");
+    if (!confirm("This will release " + nameOf(caseRecord.assistant) + " and return the existing case to the unmatched queue. The case details will remain unchanged. Continue?")) return;
+    const { error } = await supabaseClient.rpc("remove_case_assistant", {
+      p_case_id: caseId, p_reason: reason.trim()
+    });
+    if (error) throw error;
+    await loadCases();
+    alert("Assistant released. The case remains registered and is now unmatched.");
+  } catch (error) {
+    alert("Could not remove assistant: " + error.message);
     console.error(error);
   }
 }
