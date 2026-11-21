@@ -103,3 +103,8 @@ begin
     alter publication supabase_realtime add table public.notifications;
   end if;
 end $$;
+
+-- Trigger functions are invoked by their table triggers, not through the Data API.
+-- Revoke default PUBLIC execution so they cannot be called as SECURITY DEFINER RPCs.
+revoke all on function public.notify_invitation_changes() from public, anon, authenticated;
+revoke all on function public.notify_case_timing_changes() from public, anon, authenticated;
