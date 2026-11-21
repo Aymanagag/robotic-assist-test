@@ -1028,7 +1028,17 @@ function calendarDateLabel(day, options) {
         <div class="warning" style="background:#fff1f2;color:#991b1b;border:1px solid #fecaca">
           <strong>Potential double-booking detected (${overlapPairs.length})</strong>
           <ul style="margin:8px 0 0;padding-left:20px">
-            ${overlapPairs.map(pair => `<li>${esc(pair.a.assistant_name || "Assistant")} — ${esc(pair.a.start_time.slice(0,5))}–${esc(pair.a.finish_time.slice(0,5))} (${esc(pair.a.procedure_name || "Case")}) overlaps with ${esc(pair.b.start_time.slice(0,5))}–${esc(pair.b.finish_time.slice(0,5))} (${esc(pair.b.procedure_name || "Case")})</li>`).join("")}
+            ${overlapPairs.map(pair => {
+              const firstCaseId = pair.a.case_id || pair.a.event_id;
+              const secondCaseId = pair.b.case_id || pair.b.event_id;
+              return `<li style="margin-bottom:12px">
+                ${esc(pair.a.assistant_name || "Assistant")} — ${esc(pair.a.start_time.slice(0,5))}–${esc(pair.a.finish_time.slice(0,5))} (${esc(pair.a.procedure_name || "Case")}) overlaps with ${esc(pair.b.start_time.slice(0,5))}–${esc(pair.b.finish_time.slice(0,5))} (${esc(pair.b.procedure_name || "Case")})
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:7px">
+                  <button type="button" class="secondary" onclick="openOverlapCase('${esc(firstCaseId)}')" aria-label="Open first overlapping case">Open first case</button>
+                  <button type="button" class="secondary" onclick="openOverlapCase('${esc(secondCaseId)}')" aria-label="Open second overlapping case">Open second case</button>
+                </div>
+              </li>`;
+            }).join("")}
           </ul>
           <p style="margin:8px 0 0">Please review these assignments. This warning does not change or cancel bookings.</p>
         </div>`;
@@ -1356,6 +1366,15 @@ async function completeCase(id) {
   let a = data.assistants.find(x => x.id == id);
   return a ? a.name : "Not assigned";
 }
+function openOverlapCase(id) {
+  const caseRecord = data.cases.find(c => c.id === id);
+  if (!caseRecord) {
+    alert("Could not find this case in the current case list. Please refresh the calendar and try again.");
+    return;
+  }
+  editCase(id);
+}
+
 function editCase(id) {
   const c = data.cases.find(x => x.id === id);
 
