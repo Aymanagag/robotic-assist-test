@@ -408,6 +408,7 @@ padding:20px;
 <button onclick="show('assistant',this)">Assistant Portal</button>
 <button onclick="show('cases',this)">All Cases</button>
 <button onclick="show('caseManagement',this)">Manage Master Lists</button>
+<button onclick="show('calendar',this)">Calendar 📅</button>
 <button id="userManagementNav" onclick="show('users',this)">User Management</button>
 </nav>
 <main>
@@ -461,27 +462,7 @@ padding:20px;
 <h3>Confirmed cases</h3>
 <div id="confirmedList"></div>
 </div>
- <div class="card">
-  <h3>Master Resource Calendar</h3>
-
-  <div class="grid">
-    <div>
-      <label>Calendar view</label>
-      <select id="calendarView">
-        <option value="week">Week</option>
-        <option value="month">Month</option>
-        <option value="day">Day</option>
-      </select>
-    </div>
-
-    <div>
-      <label>Starting date</label>
-      <input type="date" id="calendarDate">
-    </div>
-  </div>
-
-  <div id="masterCalendar"></div>
-</div>
+ 
 <div class="card">
 <h3>Assistant availability overview</h3>
 <div id="availabilityOverview"></div>
@@ -530,6 +511,31 @@ padding:20px;
 <div><label>New procedure</label><input id="newProcedure" placeholder="Procedure name"><button class="secondary" onclick="addMaster('procedures','newProcedure')">Add procedure</button></div>
 <div><label>New surgeon</label><input id="newSurgeon" placeholder="Surgeon name"><button class="secondary" onclick="addMaster('surgeons','newSurgeon')">Add surgeon</button></div>
 </div>
+</div>
+</section>
+
+<section id="calendar" class="panel">
+<h2>Calendar 📅</h2>
+<div class="card">
+  <h3>Master Resource Calendar</h3>
+
+  <div class="grid">
+    <div>
+      <label>Calendar view</label>
+      <select id="calendarView">
+        <option value="week">Week</option>
+        <option value="month">Month</option>
+        <option value="day">Day</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Starting date</label>
+      <input type="date" id="calendarDate">
+    </div>
+  </div>
+
+  <div id="masterCalendar"></div>
 </div>
 </section>
 
