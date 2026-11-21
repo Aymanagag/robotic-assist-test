@@ -642,20 +642,45 @@ async function addMaster(type, inputId) {
       throw new Error("Finish time must be after start time.");
     }
 
-    const { error } = await supabaseClient.rpc("update_surgical_case", {
-      p_case_id: document.getElementById("editCaseId").value,
+    const caseId = document.getElementById("editCaseId").value;
+    const caseRecord = data.cases.find(c => c.id === caseId);
+    let keepAssignment = false;
+
+    if (caseRecord && caseRecord.assistant && ["Invited", "Confirmed"].includes(caseRecord.status)) {
+      const choice = prompt(
+        "This case currently has an assistant assigned (" + nameOf(caseRecord.assistant) + ").\n\n" +
+        "Type KEEP to preserve the assistant and their current invitation/confirmation.\n" +
+        "Type WITHDRAW to withdraw the invitation and return the case to the unmatched queue.\n\n" +
+        "No change will be made if you cancel."
+      );
+      if (choice === null) return;
+      const normalizedChoice = choice.trim().toUpperCase();
+      if (!["KEEP", "WITHDRAW"].includes(normalizedChoice)) {
+        throw new Error("Please enter KEEP or WITHDRAW. No changes have been made.");
+      }
+      keepAssignment = normalizedChoice === "KEEP";
+      if (!keepAssignment && !confirm("Confirm withdrawal of the current assistant invitation and return this case to unmatched?")) return;
+    }
+
+    const { error } = await supabaseClient.rpc("update_surgical_case_with_choice", {
+      p_case_id: caseId,
       p_hospital_id: document.getElementById("editHospital").value,
       p_procedure_id: document.getElementById("editProcedure").value,
       p_surgeon_id: document.getElementById("editSurgeon").value,
       p_case_date: document.getElementById("editDate").value,
       p_start_time: start,
-      p_finish_time: finish
+      p_finish_time: finish,
+      p_keep_assignment: keepAssignment
     });
 
     if (error) throw error;
 
     closeEditCase();
-    alert("Case updated successfully. Any previous assistant invitation has been withdrawn.");
+    alert(keepAssignment
+      ? "Case updated. The existing assistant assignment and invitation/confirmation have been preserved. Please notify the assistant of any changed details."
+      : caseRecord && caseRecord.assistant
+        ? "Case updated. The assistant invitation was withdrawn and the case returned to unmatched."
+        : "Case updated successfully.");
 
     await loadCases();
 
