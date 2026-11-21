@@ -1783,7 +1783,9 @@ recoveryForm.addEventListener("submit", async (e) => {
     if (error) throw error;
     message.style.color = "#166534";
     message.textContent = "Your password has been updated. You can now sign in with your new password.";
+    passwordRecoveryInProgress = false;
     await supabaseClient.auth.signOut();
+    window.history.replaceState({}, document.title, window.location.pathname);
     document.getElementById("loginPassword").value = "";
     showAuthForm(loginForm);
   } catch (error) {
@@ -1795,8 +1797,14 @@ recoveryForm.addEventListener("submit", async (e) => {
   }
 });
 
+// Keep password recovery separate from normal session restoration.
+let passwordRecoveryInProgress =
+  window.location.hash.includes("type=recovery") ||
+  new URLSearchParams(window.location.search).get("type") === "recovery";
+
 supabaseClient.auth.onAuthStateChange((event) => {
   if (event === "PASSWORD_RECOVERY") {
+    passwordRecoveryInProgress = true;
     document.getElementById("loginScreen").style.display = "flex";
     document.getElementById("passwordRecoveryMessage").textContent = "";
     showAuthForm(recoveryForm);
@@ -1865,6 +1873,9 @@ document.getElementById("loginForm").addEventListener("submit", async function(e
   // RESTORE ADMIN SESSION AFTER PAGE REFRESH
 async function restoreAdminSession() {
   try {
+    // A recovery link must show the password form, not auto-enter the portal.
+    if (passwordRecoveryInProgress) return;
+
     const { data: sessionData, error: sessionError } =
       await supabaseClient.auth.getSession();
 
