@@ -1,0 +1,1688 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Robotic Assist</title>
+<style>
+:root{--navy:#142b4a;--blue:#2563eb;--bg:#f3f6fb;--green:#16845b;--red:#c0392b}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:#203047}
+header{background:var(--navy);color:white;padding:22px 18px}
+header h1{margin:0;font-size:25px}
+header p{margin:6px 0 0;color:#cbd8e8;font-size:13px}
+nav{display:flex;background:white;border-bottom:1px solid #ddd;overflow-x:auto}
+nav button{border:0;background:white;padding:15px 17px;font-size:14px;white-space:nowrap;color:#344}
+nav button.active{color:var(--blue);border-bottom:3px solid var(--blue);font-weight:bold}
+main{max-width:1050px;margin:auto;padding:18px}
+.panel{display:none}.panel.active{display:block}
+h2{font-size:21px;margin:8px 0 16px}
+h3{font-size:16px;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:13px}
+.card{background:white;border-radius:12px;padding:17px;margin-bottom:15px;box-shadow:0 2px 8px #172b4a0c}
+.stat{font-size:28px;font-weight:bold;color:var(--blue)}
+.muted{color:#718096;font-size:13px}
+label{display:block;font-size:13px;font-weight:bold;margin:12px 0 5px}
+input,select{width:100%;padding:11px;border:1px solid #ccd5e1;border-radius:7px;background:white;font-size:15px}
+button.action{background:var(--blue);color:white;border:0;border-radius:7px;padding:11px 15px;margin-top:12px;font-weight:bold}
+button.secondary{background:#e9eff8;color:var(--navy);border:0;border-radius:7px;padding:9px 12px;margin:4px}
+button.danger{background:#fff0ed;color:var(--red);border:0;border-radius:7px;padding:9px 12px;margin:4px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:10px 7px;border-bottom:1px solid #e8edf3}
+th{color:#63748a}
+.tablewrap{overflow-x:auto}
+.tag{display:inline-block;padding:5px 8px;border-radius:20px;background:#e8efff;color:#2455a5;font-size:11px;font-weight:bold}
+.good{background:#e1f5eb;color:#16734d}
+.bad{background:#ffe9e6;color:#b32e23}
+.warning{background:#fff5dc;color:#805900;padding:11px;border-radius:8px;font-size:13px;margin-top:10px}
+.empty{padding:20px;color:#718096;text-align:center}
+.small{font-size:12px;color:#718096}
+hr{border:0;border-top:1px solid #e8edf3;margin:15px 0}
+@media(max-width:600px){main{padding:12px}.card{padding:14px}th,td{min-width:95px}}
+.header-account{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid #ffffff30}
+.header-account-name{font-size:13px;color:#e2eaf5;overflow-wrap:anywhere}
+.header-account-name strong{color:#fff}
+.header-account button{margin:0;background:#ffffff18;color:#fff;border:1px solid #ffffff70;border-radius:7px;padding:8px 12px;font-weight:bold;cursor:pointer}
+.header-account button:disabled{opacity:.6;cursor:wait}
+ /* Case status colours */
+#unmatchedList .card {
+  background: #FEE2E2;
+  border-left: 5px solid #DC2626;
+}
+
+#invitedList .card {
+  background: #FEF3C7;
+  border-left: 5px solid #D97706;
+}
+
+#confirmedList .card {
+  background: #DCFCE7;
+  border-left: 5px solid #16A34A;
+} 
+ /* MASTER RESOURCE CALENDAR */
+
+#masterCalendar {
+  margin-top: 20px;
+  overflow-x: auto;
+}
+
+.calendar-table {
+  width: 100%;
+  min-width: 750px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.calendar-table th,
+.calendar-table td {
+  border: 1px solid #D1D5DB;
+  padding: 10px;
+  text-align: center;
+  vertical-align: top;
+}
+
+.calendar-table th {
+  background: #F3F4F6;
+  font-weight: 600;
+}
+
+.calendar-assistant {
+  min-width: 150px;
+  text-align: left !important;
+  font-weight: 600;
+}
+
+.calendar-cell {
+  min-width: 110px;
+  min-height: 65px;
+}
+
+.calendar-event {
+  display: block;
+  padding: 7px;
+  margin-bottom: 5px;
+  border-radius: 6px;
+  font-size: 12px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.calendar-available {
+  background: #DCFCE7;
+  color: #166534;
+}
+
+.calendar-unavailable {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.calendar-confirmed {
+  background: #2563EB;
+  color: white;
+}
+
+.calendar-pending {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.calendar-no-availability {
+  background: #E5E7EB;
+  color: #374151;
+}
+
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 15px 0;
+  font-size: 12px;
+}
+
+.calendar-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.calendar-legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+ .month-calendar {
+  table-layout: fixed;
+  min-width: 1000px;
+}
+
+.month-calendar th {
+  text-align: center;
+  padding: 12px 5px;
+}
+
+.month-calendar td {
+  height: 125px;
+  width: 14.28%;
+  text-align: left;
+  vertical-align: top;
+  padding: 6px;
+  background: #FFFFFF;
+}
+
+.month-calendar td strong {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 14px;
+}
+
+.month-calendar .calendar-event {
+  font-size: 10px;
+  padding: 4px;
+  margin-bottom: 3px;
+}
+
+.calendar-day-link{display:inline-flex;flex-direction:column;align-items:flex-start;gap:3px;border:0;background:transparent;color:var(--blue);padding:4px 2px;cursor:pointer;font:inherit;text-align:left}
+.calendar-day-link span{font-size:10px;font-weight:normal;text-decoration:underline}
+.calendar-week-day-link{align-items:center;width:100%;text-align:center}
+.day-view-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:8px 0 18px}
+.day-view-toolbar h3{margin:0}
+.day-case-card{background:#fff;border:1px solid #dce4ef;border-radius:10px;padding:14px;margin:10px 0;box-shadow:0 1px 4px #172b4a0c}
+.day-case-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.day-case-card h4{margin:10px 0}
+.day-case-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0}
+.day-case-details div{min-width:0}
+.day-case-details dt{font-size:11px;color:#64748b;margin-bottom:3px}
+.day-case-details dd{margin:0;font-weight:600;overflow-wrap:anywhere}
+.day-availability-list{display:grid;gap:8px}
+.day-availability-item{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid #dce4ef;border-radius:8px;padding:11px}
+@media(max-width:600px){.day-view-toolbar{align-items:flex-start}.day-case-card{padding:12px}.day-case-details{grid-template-columns:1fr 1fr}}
+
+</style>
+</head>
+<body>
+  <div style="position:sticky;top:0;z-index:99999;background:#7c2d12;color:#fff;padding:10px 14px;text-align:center;font:600 13px system-ui;letter-spacing:.2px">
+    TEST ENVIRONMENT — Synthetic data only. Do not enter real patient or staff information.
+  </div>
+
+  <div id="loginScreen" style="
+position:fixed;
+inset:0;
+z-index:9999;
+background:#f3f6fb;
+display:flex;
+align-items:center;
+justify-content:center;
+padding:20px;
+">
+  <div style="
+  background:white;
+  padding:30px;
+  border-radius:14px;
+  width:100%;
+  max-width:400px;
+  box-shadow:0 4px 20px #0002;
+  ">
+    <h2 style="color:#142b4a;text-align:center">
+      🤖 Robotic Assist
+    </h2>
+
+    <p style="text-align:center;color:#718096">
+      Sign in to your account
+    </p>
+
+    <form id="loginForm">
+      <label>Email address</label>
+      <input
+        type="email"
+        id="loginEmail"
+        required
+        autocomplete="username"
+        placeholder="Enter your email"
+      >
+
+      <label>Password</label>
+      <input
+        type="password"
+        id="loginPassword"
+        required
+        autocomplete="current-password"
+        placeholder="Enter your password"
+      >
+
+      <button
+        type="submit"
+        class="action"
+        style="width:100%"
+        id="loginButton"
+      >
+        Sign in
+      </button>
+
+      <p id="loginError"
+      style="color:#c0392b;font-size:13px"></p>
+    </form>
+  </div>
+</div>
+<header>
+<h1>🤖 Robotic Assist</h1>
+<p>Surgical Assistant Availability & Case Allocation</p>
+<div id="headerAccount" class="header-account" style="display:none;">
+  <span class="header-account-name">Signed in as <strong id="headerAccountName"></strong></span>
+  <button id="signOutButton" type="button" onclick="signOutUser()">Sign out</button>
+</div>
+</header>
+<nav>
+<button class="active" onclick="show('admin',this)">Administrator</button>
+<button onclick="show('assistant',this)">Assistant Portal</button>
+<button onclick="show('cases',this)">All Cases</button>
+</nav>
+<main>
+
+<section id="admin" class="panel active">
+<h2>Administrator Dashboard</h2>
+<div class="grid">
+<div class="card"><div class="muted">Total cases</div><div class="stat" id="total">0</div></div>
+<div class="card"><div class="muted">Unmatched cases</div><div class="stat" id="unmatched">0</div></div>
+<div class="card"><div class="muted">Awaiting acceptance</div><div class="stat" id="invited">0</div></div>
+<div class="card"><div class="muted">Confirmed cases</div><div class="stat" id="confirmed">0</div></div>
+</div>
+
+<div class="card">
+<h3>Register a surgical case</h3>
+<form id="caseForm">
+<label>Hospital</label><select id="hospital" required></select>
+<label>Procedure</label><select id="procedure" required></select>
+<label>Surgeon</label><select id="surgeon" required></select>
+<label>Date</label><input type="date" id="date" required>
+<div class="grid">
+<div><label>Start time</label><input type="time" id="start" required></div>
+<div><label>Finish time</label><input type="time" id="finish" required></div>
+</div>
+  
+<label>Assistant required</label>
+<select disabled><option>Surgical Assistant</option></select>
+<button class="action" type="submit">Register case</button>
+</form>
+</div>
+
+<div class="card">
+<h3>Manage master lists</h3>
+<p class="muted">Add hospitals, procedures and surgeons for future cases.</p>
+<div class="grid">
+<div><label>New hospital</label><input id="newHospital" placeholder="Hospital name"><button class="secondary" onclick="addMaster('hospitals','newHospital')">Add hospital</button></div>
+<div><label>New procedure</label><input id="newProcedure" placeholder="Procedure name"><button class="secondary" onclick="addMaster('procedures','newProcedure')">Add procedure</button></div>
+<div><label>New surgeon</label><input id="newSurgeon" placeholder="Surgeon name"><button class="secondary" onclick="addMaster('surgeons','newSurgeon')">Add surgeon</button></div>
+</div>
+</div>
+
+<div class="card">
+<h3>Unmatched cases — require an assistant</h3>
+<div id="unmatchedList"></div>
+</div>
+
+<div class="card">
+<h3>Matched — awaiting assistant acceptance</h3>
+<div id="invitedList"></div>
+</div>
+  
+<div class="card">
+<h3>Confirmed cases</h3>
+<div id="confirmedList"></div>
+</div>
+ <div class="card">
+  <h3>Master Resource Calendar</h3>
+
+  <div class="grid">
+    <div>
+      <label>Calendar view</label>
+      <select id="calendarView">
+        <option value="week">Week</option>
+        <option value="month">Month</option>
+        <option value="day">Day</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Starting date</label>
+      <input type="date" id="calendarDate">
+    </div>
+  </div>
+
+  <div id="masterCalendar"></div>
+</div>
+<div class="card">
+<h3>Assistant availability overview</h3>
+<div id="availabilityOverview"></div>
+</div>
+ <div id="editCasePanel" class="card" style="display:none;">
+  <h3>Edit surgical case</h3>
+
+  <form id="editCaseForm">
+    <input type="hidden" id="editCaseId">
+
+    <label>Hospital</label>
+    <select id="editHospital" required></select>
+
+    <label>Procedure</label>
+    <select id="editProcedure" required></select>
+
+    <label>Surgeon</label>
+    <select id="editSurgeon" required></select>
+
+    <label>Date</label>
+    <input type="date" id="editDate" required>
+
+    <div class="grid">
+      <div>
+        <label>Start time</label>
+        <input type="time" id="editStart" required>
+      </div>
+      <div>
+        <label>Finish time</label>
+        <input type="time" id="editFinish" required>
+      </div>
+    </div>
+
+    <button class="action" type="submit">Save changes</button>
+    <button class="action" type="button" onclick="closeEditCase()">
+      Cancel
+    </button>
+  </form>
+</div>
+</section>
+
+<section id="assistant" class="panel">
+<h2>Surgical Assistant Portal</h2>
+<div class="card">
+<h3>Your account</h3>
+<p id="assistantAccountName" class="muted">Loading your account...</p>
+</div>
+<div class="card">
+<h3>Submit or update availability</h3>
+<label>Availability date</label><input type="date" id="availDate">
+<label>Availability type</label>
+<select id="availType" onchange="toggleHours()"><option value="full">Available all day</option><option value="hours">Available specific hours</option><option value="unavailable">Unavailable</option></select>
+<div id="hours">
+<label>Available from</label><input type="time" id="availStart" value="08:00">
+<label>Available until</label><input type="time" id="availFinish" value="18:00">
+</div>
+<button class="action" onclick="saveAvailability()">Submit availability</button>
+<hr>
+<h3>My submitted availability</h3>
+<div id="myAvailability"></div>
+</div>
+
+<div class="card">
+<h3>My case invitations and assignments</h3>
+<div id="myInvitations"></div>
+</div>
+</section>
+
+<section id="cases" class="panel">
+<h2>All Surgical Cases</h2>
+<div class="card">
+<div id="allCases"></div>
+</div>
+</section>
+</main>
+  
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://pgotxiphcdeappywzjnq.supabase.co";
+
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_n0XIlCyGW1ZMLrHgPaYFcw_zi-jk5qu";
+
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
+
+const defaults={
+hospitals:["Frimley Park Hospital","Heatherwood Hospital","Royal Surrey County Hospital"],
+procedures:["Robotic prostatectomy","Robotic partial nephrectomy","Robotic cystectomy","Robotic hysterectomy"],
+surgeons:["Dr Smith","Mr Jones","Mr Brown"]
+};
+let data;
+  let currentAssistantId = null;
+try{data=JSON.parse(localStorage.getItem("roboticAssistDemo"))}catch(e){}
+if(!data){
+data={
+...defaults,
+assistants:[
+{id:1,name:"Dr Ahmed",availability:[]},
+{id:2,name:"Alex Morgan",availability:[]},
+{id:3,name:"Sam Taylor",availability:[]}
+],
+cases:[]
+};
+}
+function save(){localStorage.setItem("roboticAssistDemo",JSON.stringify(data));render()}
+async function show(id, btn) {
+  const { data: userData, error: userError } =
+    await supabaseClient.auth.getUser();
+
+  if (userError || !userData.user) return;
+
+  const { data: profile, error: profileError } =
+    await supabaseClient
+      .from("profiles")
+      .select("role")
+      .eq("id", userData.user.id)
+      .single();
+
+  if (profileError) {
+    alert("Could not verify your account permissions.");
+    return;
+  }
+
+  if (profile.role !== "admin" && id !== "assistant") {
+    alert("You are not authorised to access this section.");
+    return;
+  }
+
+  document.querySelectorAll(".panel")
+    .forEach(x => x.classList.remove("active"));
+
+  document.getElementById(id).classList.add("active");
+
+  document.querySelectorAll("nav button")
+    .forEach(x => x.classList.remove("active"));
+
+  btn.classList.add("active");
+
+  render();
+}
+function options(id, items) {
+  const el = document.getElementById(id);
+  el.innerHTML = items.map(x =>
+    `<option value="${esc(x.id)}">${esc(x.name)}</option>`
+  ).join("");
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function addMaster(type, inputId) {
+  const tableMap = {
+    hospitals: "hospitals",
+    procedures: "procedures",
+    surgeons: "surgeons"
+  };
+
+  const table = tableMap[type];
+  const el = document.getElementById(inputId);
+  const name = el.value.trim();
+
+  if (!name) {
+    alert("Please enter a name.");
+    return;
+  }
+
+  if (!table) {
+    alert("Invalid master list.");
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from(table)
+    .insert({ name: name });
+
+  if (error) {
+    alert("Could not save: " + error.message);
+    return;
+  }
+
+  el.value = "";
+  await loadMasterLists();
+
+  alert("Added successfully.");
+}
+  document.getElementById("editCaseForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const button = e.target.querySelector('button[type="submit"]');
+  button.disabled = true;
+
+  try {
+    const start = document.getElementById("editStart").value;
+    const finish = document.getElementById("editFinish").value;
+
+    if (start >= finish) {
+      throw new Error("Finish time must be after start time.");
+    }
+
+    const { error } = await supabaseClient.rpc("update_surgical_case", {
+      p_case_id: document.getElementById("editCaseId").value,
+      p_hospital_id: document.getElementById("editHospital").value,
+      p_procedure_id: document.getElementById("editProcedure").value,
+      p_surgeon_id: document.getElementById("editSurgeon").value,
+      p_case_date: document.getElementById("editDate").value,
+      p_start_time: start,
+      p_finish_time: finish
+    });
+
+    if (error) throw error;
+
+    closeEditCase();
+    alert("Case updated successfully. Any previous assistant invitation has been withdrawn.");
+
+    await loadCases();
+
+  } catch (error) {
+    alert("Could not update case: " + error.message);
+    console.error(error);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+  // LOAD MASTER LISTS FROM SUPABASE
+async function loadMasterLists() {
+  try {
+    const [hospitalsResult, proceduresResult, surgeonsResult] =
+      await Promise.all([
+        supabaseClient.from("hospitals")
+          .select("id,name")
+          .eq("active", true)
+          .order("name"),
+
+        supabaseClient.from("procedures")
+          .select("id,name")
+          .eq("active", true)
+          .order("name"),
+
+        supabaseClient.from("surgeons")
+          .select("id,name")
+          .eq("active", true)
+          .order("name")
+      ]);
+
+    if (hospitalsResult.error) throw hospitalsResult.error;
+    if (proceduresResult.error) throw proceduresResult.error;
+    if (surgeonsResult.error) throw surgeonsResult.error;
+
+data.hospitals = hospitalsResult.data;
+data.procedures = proceduresResult.data;
+data.surgeons = surgeonsResult.data;
+
+    render();
+
+  } catch (error) {
+    alert("Could not load master lists: " + error.message);
+    console.error(error);
+  }
+}
+  
+async function loadAssistants() {
+  try {
+    const { data: assistants, error } = await supabaseClient
+      .from("assistants")
+      .select(`
+        id,
+        active,
+        profile:profiles(full_name),
+        availability(
+          availability_date,
+          availability_type,
+          start_time,
+          finish_time
+        )
+      `)
+      .eq("active", true);
+
+    if (error) throw error;
+
+    data.assistants = assistants.map(a => ({
+      id: a.id,
+      name: a.profile?.full_name || "Unnamed assistant",
+      availability: (a.availability || []).map(v => ({
+        date: v.availability_date,
+        type: v.availability_type === "full_day" ? "full" :
+              v.availability_type === "specific_hours" ? "hours" : "unavailable",
+        start: v.start_time,
+        finish: v.finish_time
+      }))
+    }));
+
+    render();
+
+  } catch (error) {
+    alert("Could not load assistants: " + error.message);
+    console.error(error);
+  }
+}
+async function loadMyAssistant() {
+  const { data: userData, error: userError } =
+    await supabaseClient.auth.getUser();
+
+  if (userError) throw userError;
+  if (!userData.user) throw new Error("Not signed in.");
+
+  const { data: assistant, error } = await supabaseClient
+    .from("assistants")
+    .select("id, profile:profiles(full_name)")
+    .eq("profile_id", userData.user.id)
+    .eq("active", true)
+    .single();
+
+  if (error) throw error;
+
+  currentAssistantId = assistant.id;
+
+  document.getElementById("assistantAccountName").textContent =
+    assistant.profile?.full_name || "Assistant";
+}
+  async function loadMyInvitations() {
+  try {
+    const { data: invitations, error } = await supabaseClient
+      .from("invitations")
+      .select(`
+        id,
+        status,
+        surgical_cases (
+          id,
+          case_date,
+          start_time,
+          finish_time,
+          status,
+          hospitals (name),
+          procedures (name),
+          surgeons (name)
+        )
+      `)
+      .eq("assistant_id", currentAssistantId)
+      .in("status", ["pending", "accepted"]);
+
+    if (error) throw error;
+
+    data.myInvitations = invitations || [];
+
+    renderAssistant();
+
+  } catch (error) {
+    console.error("Could not load invitations:", error);
+    alert("Could not load your invitations: " + error.message);
+  }
+}
+
+async function respondToInvitation(invitationId, response) {
+  try {
+    const action = response === "accepted" ? "accept" : "decline";
+
+    if (!confirm(`Are you sure you want to ${action} this invitation?`)) {
+      return;
+    }
+
+    const { error } = await supabaseClient.rpc(
+      "respond_to_invitation",
+      {
+        p_invitation_id: invitationId,
+        p_response: response,
+        p_response_note: null
+      }
+    );
+
+    if (error) throw error;
+
+    alert(
+      response === "accepted"
+        ? "Booking accepted successfully."
+        : "Invitation declined."
+    );
+
+    await loadMyInvitations();
+
+  } catch (error) {
+    alert("Could not process your response: " + error.message);
+    console.error(error);
+  }
+}
+ document.getElementById("calendarView").addEventListener("change", loadMasterCalendar);
+document.getElementById("calendarDate").addEventListener("change", loadMasterCalendar);
+ if (!document.getElementById("calendarDate").value) {
+  document.getElementById("calendarDate").value =
+    new Date().toISOString().slice(0, 10);
+}
+async function loadMasterCalendar() {
+  try {
+    const { data: events, error } = await supabaseClient
+      .from("calendar_events")
+      .select("*")
+      .order("event_date")
+      .order("start_time");
+
+    if (error) throw error;
+
+    const { data: assistants, error: assistantError } =
+      await supabaseClient
+        .from("assistants")
+        .select(`
+          id,
+          profile:profiles(full_name)
+        `)
+        .eq("active", true);
+
+    if (assistantError) throw assistantError;
+
+    renderMasterCalendar(events || [], assistants || []);
+
+  } catch (error) {
+    document.getElementById("masterCalendar").innerHTML =
+      `<p class="empty">Could not load calendar: ${esc(error.message)}</p>`;
+    console.error(error);
+  }
+} 
+let calendarPreviousView = "week";
+let calendarPreviousDate = "";
+
+function openCalendarDay(day) {
+  const currentView = document.getElementById("calendarView").value;
+  if (currentView === "week" || currentView === "month") {
+    calendarPreviousView = currentView;
+    calendarPreviousDate = document.getElementById("calendarDate").value;
+  }
+  document.getElementById("calendarDate").value = day;
+  document.getElementById("calendarView").value = "day";
+  loadMasterCalendar();
+}
+
+function returnToCalendarOverview(targetView) {
+  const viewToRestore = targetView === "month" || targetView === "week"
+    ? targetView
+    : calendarPreviousView;
+  document.getElementById("calendarView").value =
+    viewToRestore === "month" ? "month" : "week";
+  if (calendarPreviousDate) {
+    document.getElementById("calendarDate").value = calendarPreviousDate;
+  }
+  loadMasterCalendar();
+}
+
+function calendarDateLabel(day, options) {
+  return new Date(day + "T12:00:00").toLocaleDateString("en-GB", options);
+}
+
+ function renderMasterCalendar(events, assistants) {
+  const container = document.getElementById("masterCalendar");
+  const selectedDate =
+    document.getElementById("calendarDate").value ||
+    new Date().toISOString().slice(0, 10);
+
+  const view = document.getElementById("calendarView").value;
+
+  const date = new Date(selectedDate + "T12:00:00");
+  let dates = [];
+
+  if (view === "day") {
+    dates = [selectedDate];
+  } else if (view === "week") {
+    const start = new Date(date);
+    const mondayOffset = (date.getDay() + 6) % 7;
+    start.setDate(date.getDate() - mondayOffset);
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      dates.push([d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-"));
+    }
+} else {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+
+  // Monday-based calendar: Monday = 0, Sunday = 6
+  const startOffset = (firstDay.getDay() + 6) % 7;
+
+  const startDate = new Date(year, month, 1 - startOffset);
+
+  const totalDays = Math.ceil(
+    (startOffset + lastDay.getDate()) / 7
+  ) * 7;
+
+  for (let i = 0; i < totalDays; i++) {
+    const d = new Date(startDate);
+    d.setDate(startDate.getDate() + i);
+    dates.push([d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-"));
+  }
+}
+  const activeCases = events.filter(
+    e => e.event_type === "surgical_case" &&
+         e.event_status !== "cancelled"
+  );
+
+  const availability = events.filter(
+    e => e.event_type === "availability"
+  );
+
+  const unmatched = activeCases.filter(e => !e.assistant_id);
+
+  if (view === "day") {
+    const dayCases = events
+      .filter(e => e.event_type === "surgical_case" && e.event_date === selectedDate)
+      .sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""));
+    const dayAvailability = availability
+      .filter(e => e.event_date === selectedDate)
+      .sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""));
+
+    let dayHtml = `
+      <div class="day-view-toolbar">
+        <button type="button" class="secondary" onclick="returnToCalendarOverview('${calendarPreviousView}')">
+          ← Back to ${calendarPreviousView === "month" ? "Month" : "Week"}
+        </button>
+        <h3>${calendarDateLabel(selectedDate, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</h3>
+      </div>
+      <h4>Surgical cases (${dayCases.length})</h4>`;
+
+    if (!dayCases.length) {
+      dayHtml += `<p class="empty">No surgical cases are booked for this date.</p>`;
+    } else {
+      dayCases.forEach(e => {
+        const status = (e.event_status || "unknown").replace(/_/g, " ");
+        const statusClass = e.event_status === "cancelled"
+          ? "calendar-unavailable"
+          : e.event_status === "invited"
+            ? "calendar-pending"
+            : e.event_status === "confirmed"
+              ? "calendar-confirmed"
+              : "calendar-no-availability";
+        dayHtml += `
+          <div class="day-case-card">
+            <div class="day-case-heading">
+              <strong>${esc(e.start_time ? e.start_time.slice(0, 5) : "Time not set")}–${esc(e.finish_time ? e.finish_time.slice(0, 5) : "—")}</strong>
+              <span class="calendar-event ${statusClass}">${esc(status)}</span>
+            </div>
+            <h4>${esc(e.procedure_name || "Surgical case")}</h4>
+            <dl class="day-case-details">
+              <div><dt>Hospital</dt><dd>${esc(e.hospital_name || "Not specified")}</dd></div>
+              <div><dt>Surgeon</dt><dd>${esc(e.surgeon_name || "Not specified")}</dd></div>
+              <div><dt>Assistant</dt><dd>${esc(e.assistant_name || "Not assigned")}</dd></div>
+              <div><dt>Booking status</dt><dd>${esc(status)}</dd></div>
+            </dl>
+          </div>`;
+      });
+    }
+
+    dayHtml += `<h4>Assistant availability (${dayAvailability.length} records)</h4>`;
+    if (!dayAvailability.length) {
+      dayHtml += `<p class="empty">No assistant availability has been submitted for this date.</p>`;
+    } else {
+      dayHtml += `<div class="day-availability-list">`;
+      dayAvailability.forEach(e => {
+        const assistant = assistants.find(a => a.id === e.assistant_id);
+        const assistantName = assistant?.profile?.full_name || e.assistant_name || "Assistant";
+        const type = (e.event_status || "availability").replace(/_/g, " ");
+        const unavailable = e.event_status === "unavailable";
+        dayHtml += `
+          <div class="day-availability-item">
+            <strong>${esc(assistantName)}</strong>
+            <span class="calendar-event ${unavailable ? "calendar-unavailable" : "calendar-available"}">${esc(type)}</span>
+            <span>${unavailable ? "Not available" : e.start_time && e.finish_time ? esc(e.start_time.slice(0, 5) + "–" + e.finish_time.slice(0, 5)) : "Available all day"}</span>
+          </div>`;
+      });
+      dayHtml += `</div>`;
+    }
+
+    container.innerHTML = dayHtml;
+    return;
+  }
+
+if (view === "month") {
+  let html = `
+    <div class="calendar-legend">
+      <span><i class="calendar-available"></i>Available</span>
+      <span><i class="calendar-unavailable"></i>Unavailable</span>
+      <span><i class="calendar-confirmed"></i>Confirmed</span>
+      <span><i class="calendar-pending"></i>Pending</span>
+      <span><i class="calendar-no-availability"></i>Unmatched</span>
+    </div>
+
+    <table class="calendar-table month-calendar">
+      <thead><tr>
+        <th>Monday</th>
+        <th>Tuesday</th>
+        <th>Wednesday</th>
+        <th>Thursday</th>
+        <th>Friday</th>
+        <th>Saturday</th>
+        <th>Sunday</th>
+      </tr></thead>
+      <tbody>
+  `;
+
+  for (let i = 0; i < dates.length; i += 7) {
+    html += "<tr>";
+
+    dates.slice(i, i + 7).forEach(d => {
+      const dayEvents = events.filter(e =>
+        e.event_date === d &&
+        (e.event_type === "availability" ||
+         (e.event_type === "surgical_case" &&
+          e.event_status !== "cancelled"))
+      );
+
+      html += `<td class="calendar-cell">
+        <button type="button" class="calendar-day-link" onclick="openCalendarDay('${d}')">
+          <strong>${Number(d.slice(8, 10))}</strong>
+          <span>View day</span>
+        </button>`;
+
+      dayEvents.forEach(e => {
+        if (e.event_type === "availability") {
+          const unavailable = e.event_status === "unavailable";
+          const css = unavailable
+            ? "calendar-unavailable"
+            : "calendar-available";
+
+          const assistant = assistants.find(a => a.id === e.assistant_id);
+          const name = assistant?.profile?.full_name || "Assistant";
+
+          html += `<div class="calendar-event ${css}">
+            ${esc(name)}: ${unavailable ? "Unavailable" : "Available"}
+          </div>`;
+        } else {
+          const pending = e.event_status === "invited";
+          const css = !e.assistant_id
+            ? "calendar-no-availability"
+            : pending
+              ? "calendar-pending"
+              : "calendar-confirmed";
+
+          html += `<div class="calendar-event ${css}">
+            ${e.start_time ? esc(e.start_time.slice(0, 5)) : ""}
+            ${esc(e.procedure_name || "Surgical case")}
+            ${e.assistant_name ? " · " + esc(e.assistant_name) : ""}
+          </div>`;
+        }
+      });
+
+      html += "</td>";
+    });
+
+    html += "</tr>";
+  }
+
+  html += "</tbody></table>";
+
+  container.innerHTML = html;
+  return;
+}
+  
+  let html = `
+    <div class="calendar-legend">
+      <span><i class="calendar-available"></i>Available</span>
+      <span><i class="calendar-unavailable"></i>Unavailable</span>
+      <span><i class="calendar-confirmed"></i>Confirmed</span>
+      <span><i class="calendar-pending"></i>Pending</span>
+      <span><i class="calendar-no-availability"></i>No availability</span>
+    </div>
+  `;
+
+  if (unmatched.length) {
+    html += `<h4>Unmatched surgical cases</h4>`;
+
+    html += unmatched
+      .filter(e => dates.includes(e.event_date))
+      .map(e => `
+        <div class="calendar-event calendar-no-availability">
+          ${esc(e.event_date)} · ${esc(e.start_time || "")}–${esc(e.finish_time || "")}
+          · ${esc(e.procedure_name)} · ${esc(e.hospital_name)}
+        </div>
+      `).join("");
+  }
+
+  html += `<table class="calendar-table"><thead><tr>
+    <th class="calendar-assistant">Assistant</th>`;
+
+  dates.forEach(d => {
+    html += `<th>
+      <button type="button" class="calendar-day-link calendar-week-day-link" onclick="openCalendarDay('${d}')">
+        ${new Date(d + "T12:00:00").toLocaleDateString(
+          "en-GB", { weekday: "short", day: "numeric", month: "short" }
+        )}
+        <span>View day</span>
+      </button>
+    </th>`;
+  });
+
+  html += `</tr></thead><tbody>`;
+
+  assistants.forEach(a => {
+    const assistantName = a.profile?.full_name || "Assistant";
+
+    html += `<tr><td class="calendar-assistant">${esc(assistantName)}</td>`;
+
+    dates.forEach(d => {
+      const dayAvailability = availability.filter(
+        e => e.assistant_id === a.id && e.event_date === d
+      );
+
+      const bookings = activeCases.filter(
+        e => e.assistant_id === a.id && e.event_date === d
+      );
+
+      let cell = "";
+
+      if (dayAvailability.length === 0) {
+        cell += `<div class="calendar-event calendar-no-availability">No availability submitted</div>`;
+      }
+
+      dayAvailability.forEach(e => {
+        const fullDay = e.event_status === "full_day";
+        const unavailable = e.event_status === "unavailable";
+
+        const css = unavailable
+          ? "calendar-unavailable"
+          : "calendar-available";
+
+        const label = unavailable
+          ? "Unavailable"
+          : fullDay
+            ? "Available all day"
+            : `Available ${esc(e.start_time)}–${esc(e.finish_time)}`;
+
+        cell += `<div class="calendar-event ${css}">${label}</div>`;
+      });
+
+      bookings.forEach(e => {
+        const pending = e.event_status === "invited";
+        const css = pending ? "calendar-pending" : "calendar-confirmed";
+
+        cell += `
+          <div class="calendar-event ${css}">
+            ${pending ? "Invitation pending" : "Confirmed"}
+            <br>${esc(e.start_time)}–${esc(e.finish_time)}
+            <br>${esc(e.procedure_name)}
+            <br>${esc(e.hospital_name)}
+          </div>`;
+      });
+
+      html += `<td class="calendar-cell">${cell}</td>`;
+    });
+
+    html += `</tr>`;
+  });
+
+  html += `</tbody></table>`;
+
+  container.innerHTML = html;
+}
+ async function loadCases() {
+  try {
+    const { data: cases, error } = await supabaseClient
+      .from("surgical_cases")
+      .select(`
+        id,
+        hospital_id,
+        procedure_id,
+        surgeon_id,
+        case_date,
+        start_time,
+        finish_time,
+        status,
+        assistant_id,
+        hospital:hospitals(name),
+        procedure:procedures(name),
+        surgeon:surgeons(name)
+      `)
+      .order("case_date");
+
+    if (error) throw error;
+
+    data.cases = cases.map(c => ({
+      id: c.id,
+      hospitalId: c.hospital_id,
+      procedureId: c.procedure_id,
+      surgeonId: c.surgeon_id,
+      date: c.case_date,
+      start: c.start_time,
+      finish: c.finish_time,
+      status: c.status.charAt(0).toUpperCase() + c.status.slice(1),
+      assistant: c.assistant_id,
+      hospital: c.hospital?.name || "",
+      procedure: c.procedure?.name || "",
+      surgeon: c.surgeon?.name || ""
+    }));
+
+    render();
+    await loadMasterCalendar();
+   
+  } catch (error) {
+    alert("Could not load surgical cases: " + error.message);
+    console.error(error);
+  }
+}
+  function render(){
+options("hospital",data.hospitals);
+options("procedure",data.procedures);
+options("surgeon",data.surgeons);
+document.getElementById("total").textContent=data.cases.length;
+document.getElementById("unmatched").textContent=data.cases.filter(c=>c.status==="Unmatched").length;
+document.getElementById("invited").textContent=data.cases.filter(c=>c.status==="Invited").length;
+document.getElementById("confirmed").textContent=data.cases.filter(c=>c.status==="Confirmed").length;
+document.getElementById("unmatchedList").innerHTML=caseList("Unmatched");
+document.getElementById("invitedList").innerHTML=caseList("Invited");
+document.getElementById("confirmedList").innerHTML=caseList("Confirmed");
+document.getElementById("allCases").innerHTML=allCaseList();
+document.getElementById("availabilityOverview").innerHTML=availabilityList();
+renderAssistant();
+}
+ function nameOf(id) {
+  let a = data.assistants.find(x => x.id == id);
+  return a ? a.name : "Not assigned";
+}
+function editCase(id) {
+  const c = data.cases.find(x => x.id === id);
+
+  if (!c) {
+    alert("Case not found.");
+    return;
+  }
+
+  document.getElementById("editCaseId").value = c.id;
+
+  options("editHospital", data.hospitals);
+  options("editProcedure", data.procedures);
+  options("editSurgeon", data.surgeons);
+
+  document.getElementById("editHospital").value = c.hospitalId;
+  document.getElementById("editProcedure").value = c.procedureId;
+  document.getElementById("editSurgeon").value = c.surgeonId;
+  document.getElementById("editDate").value = c.date;
+  document.getElementById("editStart").value = c.start;
+  document.getElementById("editFinish").value = c.finish;
+
+  document.getElementById("editCasePanel").style.display = "block";
+
+  document.getElementById("editCasePanel").scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+function closeEditCase() {
+  document.getElementById("editCasePanel").style.display = "none";
+}
+function caseList(status) {
+  const list = data.cases.filter(c => c.status === status);
+
+  if (!list.length) {
+    return '<div class="empty">No cases in this section.</div>';
+  }
+
+  return list.map(c => `
+    <div class="card">
+      <strong>${esc(c.procedure)}</strong>
+      <br>
+      <span class="muted">
+        ${esc(c.hospital)} · ${esc(c.date)} · ${esc(c.start)}–${esc(c.finish)}
+      </span>
+      <p class="small">Surgeon: ${esc(c.surgeon)}</p>
+      <button class="action" onclick="editCase('${esc(c.id)}')">
+  Edit case
+</button>
+${status !== "Cancelled" ? `
+  <button class="action" onclick="cancelCase('${esc(c.id)}')">
+    Cancel case
+  </button>
+` : ""}
+
+      ${
+        status === "Unmatched"
+          ? `
+            <label>Allocate assistant</label>
+            <select id="assign${c.id}">
+              ${data.assistants.map(a =>
+                `<option value="${a.id}">${esc(a.name)}</option>`
+              ).join("")}
+            </select>
+            <button class="action" onclick="invite('${esc(c.id)}')">
+              Invite assistant
+            </button>
+          `
+          : `
+            <span class="tag">
+              ${status === "Confirmed" ? "Confirmed assistant: " : "Awaiting acceptance: "}
+              ${esc(nameOf(c.assistant))}
+            </span>
+          `
+      }
+    </div>
+  `).join("");
+}
+
+async function invite(id) {
+  try {
+    const assistantId = document.getElementById("assign" + id).value;
+
+    if (!assistantId) {
+      throw new Error("Please select an assistant.");
+    }
+
+    const { data: result, error } = await supabaseClient.rpc(
+      "check_assistant_matching",
+      { p_case_id: id }
+    );
+
+    if (error) throw error;
+
+    const match = result.find(
+      a => a.assistant_id === assistantId
+    );
+
+    if (!match) {
+      throw new Error("Assistant matching information was not found.");
+    }
+
+    if (match.booking_conflict) {
+      throw new Error(
+        "This assistant has an overlapping booking. Allocation is not permitted."
+      );
+    }
+
+    let override = false;
+    let reason = null;
+
+    if (!match.availability_match) {
+      const warningMessage = match.explicitly_unavailable
+        ? "IMPORTANT: This assistant has explicitly marked themselves UNAVAILABLE on this date. " +
+          "Assigning them would override their stated unavailability. " +
+          "Only proceed if you have checked with the assistant and have a valid operational reason. " +
+          "Do you want to continue?"
+        : match.availability_submitted
+          ? "This assistant submitted availability, but it does not cover the full case time. " +
+            "The case may fall partly or wholly outside the hours they offered. " +
+            "Do you want to continue with an override?"
+          : "This assistant has not submitted availability for this date. " +
+            "Their availability is unconfirmed. Do you want to continue with an override?";
+
+      override = confirm(warningMessage);
+
+      if (!override) return;
+
+      reason = prompt(
+        match.explicitly_unavailable
+          ? "Record why you are overriding the assistant's explicit unavailability:"
+          : match.availability_submitted
+            ? "Record why you are proceeding despite the submitted hours not covering the full case:"
+            : "Record why you are proceeding without submitted availability:"
+      );
+
+      if (!reason || !reason.trim()) {
+        throw new Error("An override reason is required.");
+      }
+    }
+
+    const { error: allocationError } = await supabaseClient.rpc(
+      "allocate_assistant",
+      {
+        p_case_id: id,
+        p_assistant_id: assistantId,
+        p_override_warnings: override,
+        p_override_reason: reason
+      }
+    );
+
+    if (allocationError) throw allocationError;
+
+    await loadCases();
+    alert("Invitation sent. Awaiting assistant acceptance.");
+
+  } catch (error) {
+    alert("Could not allocate assistant: " + error.message);
+    console.error(error);
+  }
+}
+async function cancelCase(id) {
+  try {
+    const reason = prompt("Please enter the reason for cancelling this case:");
+
+    if (reason === null) return;
+
+    if (!reason.trim()) {
+      throw new Error("A cancellation reason is required.");
+    }
+
+    const confirmed = confirm(
+      "Are you sure you want to cancel this case? Any assistant invitation will be withdrawn."
+    );
+
+    if (!confirmed) return;
+
+    const { error } = await supabaseClient.rpc(
+      "cancel_surgical_case",
+      {
+        p_case_id: id,
+        p_reason: reason.trim()
+      }
+    );
+
+    if (error) throw error;
+
+    await loadCases();
+
+    alert("Case cancelled successfully.");
+
+  } catch (error) {
+    alert("Could not cancel case: " + error.message);
+    console.error(error);
+  }
+}
+function allCaseList(){
+if(!data.cases.length)return '<div class="empty">No cases registered yet.</div>';
+return '<div class="tablewrap"><table><tr><th>Case</th><th>Date/time</th><th>Hospital</th><th>Assistant</th><th>Status</th></tr>'+data.cases.map(c=>`<tr><td>${esc(c.procedure)}</td><td>${c.date}<br>${c.start}-${c.finish}</td><td>${esc(c.hospital)}</td><td>${esc(nameOf(c.assistant))}</td><td><span class="tag ${c.status==="Confirmed"?"good":c.status==="Unmatched"?"bad":""}">${c.status}</span></td></tr>`).join("")+'</table></div>';
+}
+function availabilityList(){
+return data.assistants.map(a=>`<p><strong>${esc(a.name)}</strong> — ${a.availability.length} availability entries</p>`).join("<hr>");
+}
+function toggleHours(){document.getElementById("hours").style.display=document.getElementById("availType").value==="hours"?"block":"none"}
+async function saveAvailability() {
+  try {
+    if (!currentAssistantId) {
+      throw new Error("Your assistant account is not loaded.");
+    }
+
+    const date = document.getElementById("availDate").value;
+    const selectedType = document.getElementById("availType").value;
+    const start = document.getElementById("availStart").value;
+    const finish = document.getElementById("availFinish").value;
+
+    if (!date) throw new Error("Please select a date.");
+
+    if (selectedType === "hours" && (!start || !finish || start >= finish)) {
+      throw new Error("Please enter valid availability hours.");
+    }
+
+    const availabilityType =
+      selectedType === "full" ? "full_day" :
+      selectedType === "hours" ? "specific_hours" :
+      "unavailable";
+
+    const availabilityData = {
+      assistant_id: currentAssistantId,
+      availability_date: date,
+      availability_type: availabilityType,
+      start_time: selectedType === "hours" ? start : null,
+      finish_time: selectedType === "hours" ? finish : null
+    };
+
+    const { data: existing, error: lookupError } = await supabaseClient
+      .from("availability")
+      .select("id")
+      .eq("assistant_id", currentAssistantId)
+      .eq("availability_date", date)
+      .maybeSingle();
+
+    if (lookupError) throw lookupError;
+
+    let result;
+
+    if (existing) {
+      result = await supabaseClient
+        .from("availability")
+        .update(availabilityData)
+        .eq("id", existing.id);
+    } else {
+      result = await supabaseClient
+        .from("availability")
+        .insert(availabilityData);
+    }
+
+    if (result.error) throw result.error;
+
+    await loadAssistants();
+    renderAssistant();
+
+    alert("Availability saved successfully.");
+
+  } catch (error) {
+    alert("Could not save availability: " + error.message);
+    console.error(error);
+  }
+}
+function renderAssistant() {
+  if (!currentAssistantId) return;
+
+  const assistant = data.assistants.find(
+    a => a.id === currentAssistantId
+  );
+
+  if (assistant) {
+    document.getElementById("assistantAccountName").textContent =
+      assistant.name;
+
+    document.getElementById("myAvailability").innerHTML =
+      assistant.availability.length
+        ? assistant.availability.map(v =>
+            `<p>${esc(v.date)}: <strong>${esc(v.type)}</strong></p>`
+          ).join("")
+        : "<p>No availability submitted yet.</p>";
+  }
+
+  const invitations = data.myInvitations || [];
+
+  document.getElementById("myInvitations").innerHTML =
+    invitations.length
+      ? invitations.map(invitation => {
+          const c = invitation.surgical_cases;
+
+          if (!c) return "";
+
+          const status = invitation.status === "pending"
+            ? "Awaiting your response"
+            : "Accepted";
+
+          return `
+            <div class="card">
+              <strong>${esc(c.procedures?.name || "Procedure not specified")}</strong>
+              <p>Hospital: ${esc(c.hospitals?.name || "Not specified")}</p>
+              <p>Surgeon: ${esc(c.surgeons?.name || "Not specified")}</p>
+              <p>Date: ${esc(c.case_date)}</p>
+              <p>Time: ${esc(c.start_time)}–${esc(c.finish_time)}</p>
+              <p>Status: <strong>${status}</strong></p>
+              ${invitation.status === "pending" ? `
+  <button class="action" onclick="respondToInvitation('${esc(invitation.id)}', 'accepted')">
+    Accept
+  </button>
+  <button class="action" onclick="respondToInvitation('${esc(invitation.id)}', 'declined')">
+    Decline
+  </button>
+` : ""}
+            </div>
+          `;
+        }).join("")
+      : "<p>No invitations or assignments.</p>";
+}
+function removeAvailability(aid,date){
+let a=data.assistants.find(x=>x.id==aid);a.availability=a.availability.filter(v=>v.date!==date);save();
+}
+function respond(id,response){
+let c=data.cases.find(x=>x.id===id);
+if(response==="Declined"){c.status="Unmatched";c.assistant=null;}
+else c.status="Confirmed";
+save();alert(response==="Confirmed"?"Booking confirmed.":"Invitation declined. Case returned to unmatched queue.");
+}
+// AUTHENTICATED ACCOUNT DISPLAY AND SIGN OUT
+function updateAccountDisplay(name) {
+  const account = document.getElementById("headerAccount");
+  const nameElement = document.getElementById("headerAccountName");
+  nameElement.textContent = name || "Account";
+  account.style.display = "flex";
+}
+
+async function signOutUser() {
+  const button = document.getElementById("signOutButton");
+  if (!confirm("Are you sure you want to sign out?")) return;
+
+  button.disabled = true;
+  button.textContent = "Signing out...";
+
+  try {
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) throw error;
+    window.location.reload();
+  } catch (error) {
+    alert("Could not sign out: " + error.message);
+    button.disabled = false;
+    button.textContent = "Sign out";
+  }
+}
+
+// SUPABASE AUTHENTICATION
+document.getElementById("loginForm").addEventListener("submit", async function(e) {
+  e.preventDefault();
+
+  const button = document.getElementById("loginButton");
+  const errorBox = document.getElementById("loginError");
+
+  button.disabled = true;
+  button.textContent = "Signing in...";
+  errorBox.textContent = "";
+
+  try {
+    const { data: loginData, error: loginError } =
+      await supabaseClient.auth.signInWithPassword({
+        email: document.getElementById("loginEmail").value.trim(),
+        password: document.getElementById("loginPassword").value
+      });
+
+    if (loginError) throw loginError;
+
+    const { data: profile, error: profileError } =
+      await supabaseClient
+        .from("profiles")
+        .select("full_name, role")
+        .eq("id", loginData.user.id)
+        .single();
+
+    if (profileError) throw profileError;
+
+    updateAccountDisplay(profile.full_name || loginData.user.email);
+
+   if (profile.role === "admin") {
+  await loadMasterLists();
+  await loadAssistants();
+  await loadCases();
+
+  document.getElementById("loginScreen").style.display = "none";
+  alert("Welcome, " + profile.full_name + ". Administrator login successful.");
+
+} else if (profile.role === "assistant") {
+  await loadAssistants();
+  await loadMyAssistant();
+  await loadMyInvitations();
+
+  document.getElementById("loginScreen").style.display = "none";
+  await show("assistant", document.querySelectorAll("nav button")[1]);
+
+  alert("Welcome, " + profile.full_name + ". Assistant login successful.");
+
+} else {
+  throw new Error("Your account does not have an authorised role.");
+}
+
+  } catch (error) {
+    errorBox.textContent = error.message;
+  }
+
+  button.disabled = false;
+  button.textContent = "Sign in";
+});
+  // RESTORE ADMIN SESSION AFTER PAGE REFRESH
+async function restoreAdminSession() {
+  try {
+    const { data: sessionData, error: sessionError } =
+      await supabaseClient.auth.getSession();
+
+    if (sessionError) throw sessionError;
+    if (!sessionData.session) return;
+
+    const { data: profile, error: profileError } =
+      await supabaseClient
+        .from("profiles")
+        .select("full_name, role")
+        .eq("id", sessionData.session.user.id)
+        .single();
+
+    if (profileError) throw profileError;
+
+    updateAccountDisplay(profile.full_name || sessionData.session.user.email);
+
+if (profile.role === "admin") {
+  await loadMasterLists();
+  await loadAssistants();
+
+  // Load the administrator's own assistant account
+  await loadMyAssistant();
+  await loadMyInvitations();
+
+  await loadCases();
+
+  document.getElementById("loginScreen").style.display = "none";
+
+    } else if (profile.role === "assistant") {
+      await loadAssistants();
+      await loadMyAssistant();
+      await loadMyInvitations();
+      document.getElementById("loginScreen").style.display = "none";
+      await show("assistant", document.querySelectorAll("nav button")[1]);
+
+    } else {
+      await supabaseClient.auth.signOut();
+    }
+
+  } catch (error) {
+    console.error("Session restoration error:", error);
+  }
+}
+restoreAdminSession();
+document.getElementById("caseForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const button = e.target.querySelector('button[type="submit"]');
+  button.disabled = true;
+
+  try {
+    const start = document.getElementById("start").value;
+    const finish = document.getElementById("finish").value;
+    const date = document.getElementById("date").value;
+
+    if (start >= finish) {
+      throw new Error("Finish time must be after start time.");
+    }
+
+    const { data: caseData, error } = await supabaseClient
+      .from("surgical_cases")
+      .insert({
+        created_by: (await supabaseClient.auth.getUser()).data.user.id,
+        hospital_id: document.getElementById("hospital").value,
+        procedure_id: document.getElementById("procedure").value,
+        surgeon_id: document.getElementById("surgeon").value,
+        case_date: date,
+        start_time: start,
+        finish_time: finish,
+        status: "unmatched"
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    e.target.reset();
+
+    alert("Surgical case saved successfully.");
+
+    await loadCases();
+
+  } catch (error) {
+    alert("Could not register case: " + error.message);
+    console.error(error);
+  } finally {
+    button.disabled = false;
+  }
+});
+render();
+</script>
+</body>
+</html>
