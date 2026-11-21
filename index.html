@@ -249,6 +249,15 @@ hr{border:0;border-top:1px solid #e8edf3;margin:15px 0}
 .stat-button.stat-total .stat{color:#334155}
 .calendar-completed{background:#16865B;color:#fff}
 .calendar-cancelled{background:#C24141;color:#fff}
+
+.app-header{background:#142b4a;color:#fff;padding:24px 22px 18px}
+.brand-block{max-width:900px;margin:0 auto}
+.advance-logo{display:block;width:min(100%,520px);height:auto;max-height:150px}
+.brand-block p{margin:10px 0 0;color:#e2eaf5;font-size:clamp(15px,2.2vw,22px);letter-spacing:.2px}
+.login-brand{width:100%;max-width:300px;margin:0 auto 16px}
+.login-brand .advance-logo{width:100%;height:auto}
+@media(max-width:600px){.app-header{padding:18px 14px 14px}.advance-logo{max-height:112px}.brand-block p{font-size:15px}}
+
 </style>
 </head>
 <body>
@@ -274,9 +283,17 @@ padding:20px;
   max-width:400px;
   box-shadow:0 4px 20px #0002;
   ">
-    <h2 style="color:#142b4a;text-align:center">
-      🤖 Robotic Assist
-    </h2>
+<div class="login-brand"><svg class="advance-logo" viewBox="0 0 760 180" role="img" aria-label="Advance Surgical" xmlns="http://www.w3.org/2000/svg">
+  <g font-family="Arial, Helvetica, sans-serif" font-weight="700">
+    <text x="8" y="88" font-size="100" fill="#ffffff" letter-spacing="-3">Advance</text>
+    <text x="32" y="169" font-size="100" fill="#08b9b2" letter-spacing="-3">Surgical</text>
+  </g>
+  <g transform="translate(590 4)">
+    <path d="M0 45 L145 0 L112 105 Q56 106 0 45Z" fill="#0756a4"/>
+    <path d="M145 0 L112 105 L88 175 L70 104Z" fill="#202052"/>
+    <path d="M70 104 L112 105 L88 175Z" fill="#08b9b2"/>
+  </g>
+</svg></div>
 
     <p style="text-align:center;color:#718096">
       Sign in to your account
@@ -339,9 +356,21 @@ padding:20px;
     </form>
   </div>
 </div>
-<header>
-<h1>🤖 Robotic Assist</h1>
-<p>Surgical Assistant Availability & Case Allocation</p>
+<header class="app-header">
+<div class="brand-block">
+<svg class="advance-logo" viewBox="0 0 760 180" role="img" aria-label="Advance Surgical" xmlns="http://www.w3.org/2000/svg">
+  <g font-family="Arial, Helvetica, sans-serif" font-weight="700">
+    <text x="8" y="88" font-size="100" fill="#ffffff" letter-spacing="-3">Advance</text>
+    <text x="32" y="169" font-size="100" fill="#08b9b2" letter-spacing="-3">Surgical</text>
+  </g>
+  <g transform="translate(590 4)">
+    <path d="M0 45 L145 0 L112 105 Q56 106 0 45Z" fill="#0756a4"/>
+    <path d="M145 0 L112 105 L88 175 L70 104Z" fill="#202052"/>
+    <path d="M70 104 L112 105 L88 175Z" fill="#08b9b2"/>
+  </g>
+</svg>
+<p>Surgical Assistant Availability &amp; Case Allocation</p>
+</div>
 <div id="headerAccount" class="header-account" style="display:none;">
   <span class="header-account-name">Signed in as <strong id="headerAccountName"></strong></span>
   <div class="notification-wrap">
