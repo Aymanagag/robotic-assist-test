@@ -295,6 +295,8 @@ padding:20px;
   border-radius:14px;
   width:100%;
   max-width:400px;
+  max-height:calc(100vh - 40px);
+  overflow-y:auto;
   box-shadow:0 4px 20px #0002;
   ">
 <div class="login-brand"><svg class="advance-logo" viewBox="0 0 1536 512" role="img" aria-label="Advance Surgical — Surgical Assistant Availability & Case Allocation" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
@@ -375,7 +377,7 @@ padding:20px;
 
     <div id="pendingApplicationPanel">
       <h3>Application awaiting approval</h3>
-      <p>Your email has been verified and your application is awaiting administrator review. You cannot submit availability or access cases until your application is approved.</p>
+      <p>Your application is awaiting administrator review. You cannot submit availability or access cases until your application is approved.</p>
       <p class="small">You can sign in again later to check whether access has been approved.</p>
       <button type="button" class="action" id="pendingSignOutButton" style="width:100%">Sign out</button>
     </div>
