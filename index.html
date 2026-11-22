@@ -268,6 +268,10 @@ hr{border:0;border-top:1px solid #e8edf3;margin:15px 0}
 @media(max-width:600px){.app-header{padding:0}.advance-logo{width:100%;height:auto}.login-brand{max-width:100%}}
 
  .clickable-case-row{cursor:pointer}.clickable-case-row:hover{background:#f1f5f9}.clickable-case-row:focus-visible{outline:3px solid var(--accent,#64748b);outline-offset:-3px}
+
+.assistant-application-card{border-left:4px solid #d97706}
+.application-actions{display:flex;gap:6px;flex-wrap:wrap}
+#pendingApplicationPanel{display:none}
 </style>
 </head>
 <body>
@@ -349,7 +353,32 @@ padding:20px;
 
       <p id="loginError"
       style="color:#c0392b;font-size:13px"></p>
+      <button type="button" class="action" id="openRegistrationButton"
+        style="width:100%;margin-top:10px;background:#0f766e">Apply to join as an assistant</button>
     </form>
+
+    <form id="assistantRegistrationForm" style="display:none">
+      <h3>Assistant application</h3>
+      <p class="small">Create your account. Your access will remain pending until an administrator reviews your application.</p>
+      <label for="registrationFullName">Full name</label>
+      <input id="registrationFullName" type="text" maxlength="120" required autocomplete="name" placeholder="Your full name">
+      <label for="registrationEmail">Email address</label>
+      <input id="registrationEmail" type="email" maxlength="254" required autocomplete="email" placeholder="name@example.com">
+      <label for="registrationPassword">Password</label>
+      <input id="registrationPassword" type="password" minlength="8" required autocomplete="new-password" placeholder="At least 8 characters">
+      <label for="registrationPasswordConfirm">Confirm password</label>
+      <input id="registrationPasswordConfirm" type="password" minlength="8" required autocomplete="new-password" placeholder="Re-enter your password">
+      <button type="submit" class="action" id="submitAssistantApplicationButton" style="width:100%">Submit application</button>
+      <p id="registrationMessage" class="small" role="status" aria-live="polite"></p>
+      <button type="button" class="action" id="backToLoginFromRegistration" style="width:100%;background:#64748b">Back to sign in</button>
+    </form>
+
+    <div id="pendingApplicationPanel">
+      <h3>Application awaiting approval</h3>
+      <p>Your email has been verified and your application is awaiting administrator review. You cannot submit availability or access cases until your application is approved.</p>
+      <p class="small">You can sign in again later to check whether access has been approved.</p>
+      <button type="button" class="action" id="pendingSignOutButton" style="width:100%">Sign out</button>
+    </div>
 
     <form id="passwordResetRequestForm" style="display:none">
       <p style="color:#475569">Enter your account email address. We will send you a secure password-reset link.</p>
@@ -553,6 +582,12 @@ padding:20px;
     <p id="assistantInviteMessage" role="status" aria-live="polite" class="small"></p>
   </form>
 </div>
+<div class="card assistant-application-card">
+  <div class="day-view-toolbar">
+    <div><h3>Assistant Applications</h3><p class="muted">Self-registered assistants awaiting an administrator decision.</p></div>
+  </div>
+  <div id="assistantApplicationsList"><p class="empty">Open User Management to load applications.</p></div>
+</div>
 <div class="card">
   <div class="day-view-toolbar">
     <div><h3>Registered users</h3><p class="muted">Account details and current application permissions.</p></div>
@@ -722,6 +757,23 @@ async function loadUsers() {
       list.innerHTML = '<p class="empty">No registered users found.</p>';
       return;
     }
+    const applicationsList = document.getElementById("assistantApplicationsList");
+    const pendingApplications = users.filter(user => {
+      const assistant = Array.isArray(user.assistants) ? user.assistants[0] : user.assistants;
+      return user.role === "assistant" && user.is_active === true && assistant && assistant.active === false;
+    });
+    if (applicationsList) {
+      applicationsList.innerHTML = pendingApplications.length
+        ? '<div class="tablewrap"><table class="user-management-table"><thead><tr><th>Applicant</th><th>Submitted</th><th>Decision</th></tr></thead><tbody>' +
+          pendingApplications.map(user => '<tr><td><div class="user-management-name">' + esc(user.full_name || "Unnamed applicant") +
+            '</div><div class="user-management-email">' + esc(user.email || "Email unavailable") + '</div></td><td>' +
+            esc(user.created_at ? new Date(user.created_at).toLocaleDateString("en-GB") : "—") + '</td><td><div class="application-actions">' +
+            '<button type="button" class="action" onclick="reviewAssistantApplication(\'' + esc(user.id) + '\',\'approve\')">Approve</button>' +
+            '<button type="button" class="danger" onclick="reviewAssistantApplication(\'' + esc(user.id) + '\',\'reject\')">Reject</button>' +
+            '</div></td></tr>').join("") + '</tbody></table></div>'
+        : '<p class="empty">There are no assistant applications awaiting review.</p>';
+    }
+
     list.innerHTML = '<div class="tablewrap"><table class="user-management-table"><thead><tr><th>Name / email</th><th>Role</th><th>Account</th><th>Assistant access</th><th>Role actions</th><th>Account actions</th><th>Created</th></tr></thead><tbody>' +
       users.map(user => {
         const assistant = Array.isArray(user.assistants) ? user.assistants[0] : user.assistants;
@@ -747,6 +799,32 @@ async function loadUsers() {
     console.error("User management load failed:", error);
   } finally {
     if (refreshButton) refreshButton.disabled = false;
+  }
+}
+
+async function reviewAssistantApplication(userId, decision) {
+  const action = decision === "approve" ? "approve" : "reject";
+  let reason = null;
+  if (decision === "reject") {
+    reason = prompt("Please enter a reason for rejecting this assistant application:");
+    if (reason === null) return;
+    reason = reason.trim();
+    if (!reason) { alert("A reason is required. No change has been made."); return; }
+  }
+  if (!confirm("Confirm that you want to " + action + " this assistant application?")) return;
+  try {
+    const { error } = await supabaseClient.rpc("admin_review_assistant_application", {
+      p_user_id: userId,
+      p_decision: decision,
+      p_reason: reason
+    });
+    if (error) throw error;
+    await loadUsers();
+    alert(decision === "approve"
+      ? "Assistant approved. They can now sign in and submit availability."
+      : "Assistant application rejected. Application access has been disabled.");
+  } catch (error) {
+    alert("Could not review assistant application: " + error.message);
   }
 }
 
@@ -2319,11 +2397,85 @@ const loginForm = document.getElementById("loginForm");
 const resetRequestForm = document.getElementById("passwordResetRequestForm");
 const recoveryForm = document.getElementById("passwordRecoveryForm");
 
+const registrationForm = document.getElementById("assistantRegistrationForm");
+const pendingApplicationPanel = document.getElementById("pendingApplicationPanel");
+
 function showAuthForm(formToShow) {
   loginForm.style.display = formToShow === loginForm ? "block" : "none";
   resetRequestForm.style.display = formToShow === resetRequestForm ? "block" : "none";
   recoveryForm.style.display = formToShow === recoveryForm ? "block" : "none";
+  registrationForm.style.display = formToShow === registrationForm ? "block" : "none";
+  pendingApplicationPanel.style.display = "none";
 }
+
+function showPendingApplication() {
+  showAuthForm(null);
+  pendingApplicationPanel.style.display = "block";
+  document.getElementById("loginScreen").style.display = "flex";
+}
+
+document.getElementById("openRegistrationButton").addEventListener("click", () => {
+  document.getElementById("registrationMessage").textContent = "";
+  showAuthForm(registrationForm);
+});
+document.getElementById("backToLoginFromRegistration").addEventListener("click", () => {
+  showAuthForm(loginForm);
+});
+document.getElementById("pendingSignOutButton").addEventListener("click", async () => {
+  const button = document.getElementById("pendingSignOutButton");
+  button.disabled = true;
+  const { error } = await supabaseClient.auth.signOut();
+  if (error) {
+    button.disabled = false;
+    alert("Could not sign out: " + error.message);
+    return;
+  }
+  window.location.reload();
+});
+
+registrationForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = document.getElementById("submitAssistantApplicationButton");
+  const message = document.getElementById("registrationMessage");
+  const fullName = document.getElementById("registrationFullName").value.trim();
+  const email = document.getElementById("registrationEmail").value.trim().toLowerCase();
+  const password = document.getElementById("registrationPassword").value;
+  const confirmation = document.getElementById("registrationPasswordConfirm").value;
+
+  message.textContent = "";
+  if (!fullName) { message.textContent = "Please enter your full name."; return; }
+  if (password.length < 8) { message.textContent = "Password must be at least 8 characters."; return; }
+  if (password !== confirmation) { message.textContent = "The passwords do not match."; return; }
+
+  button.disabled = true;
+  button.textContent = "Submitting…";
+  try {
+    const redirectTo = window.location.origin + window.location.pathname;
+    const { data: result, error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName, registration_source: "assistant_application" },
+        emailRedirectTo: redirectTo
+      }
+    });
+    if (error) throw error;
+
+    registrationForm.reset();
+    if (result.session) {
+      showPendingApplication();
+    } else {
+      message.style.color = "#166534";
+      message.textContent = "Your application has been submitted. Please check your email and follow the verification link before signing in. Your access will remain pending administrator approval.";
+    }
+  } catch (error) {
+    message.style.color = "#b91c1c";
+    message.textContent = "Could not submit your application: " + error.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = "Submit application";
+  }
+});
 
 document.getElementById("forgotPasswordButton").addEventListener("click", () => {
   const email = document.getElementById("loginEmail").value.trim();
@@ -2458,6 +2610,14 @@ document.getElementById("loginForm").addEventListener("submit", async function(e
   alert("Welcome, " + profile.full_name + ". Administrator login successful.");
 
 } else if (profile.role === "assistant") {
+  const { data: assistantAccess, error: assistantAccessError } = await supabaseClient
+    .from("assistants").select("active").eq("profile_id", loginData.user.id).single();
+  if (assistantAccessError) throw assistantAccessError;
+  if (!assistantAccess.active) {
+    showPendingApplication();
+    return;
+  }
+
   await loadAssistants();
   await loadMyAssistant();
   await loadMyInvitations();
@@ -2522,6 +2682,13 @@ if (profile.role === "admin") {
   }
 
     } else if (profile.role === "assistant") {
+      const { data: assistantAccess, error: assistantAccessError } = await supabaseClient
+        .from("assistants").select("active").eq("profile_id", sessionData.session.user.id).single();
+      if (assistantAccessError) throw assistantAccessError;
+      if (!assistantAccess.active) {
+        showPendingApplication();
+        return;
+      }
       await loadAssistants();
       await loadMyAssistant();
       await loadMyInvitations();
