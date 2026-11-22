@@ -804,7 +804,7 @@ async function loadUsers() {
           '</div><div class="user-management-email">' + esc(user.email || "Email unavailable") +
           '</div></td><td><span class="user-role ' + (user.role === "admin" ? "admin" : "") + '">' +
           esc(user.role) + '</span></td><td>' + accountStatus +
-          '</td><td>' + esc(access) + '</td><td>'
+          '</td><td>' + esc(access) + '</td><td>' +
           '<button type="button" class="secondary" onclick="changeUserRole(\'' + esc(user.id) + '\',\'' + roleAction + '\')"' + (isSelf ? ' disabled title="You cannot change your own role"' : '') + '>' + roleLabel + '</button>' +
           '</td><td>' +
           '<button type="button" class="' + (user.is_active ? 'danger' : 'secondary') + '" onclick="changeUserActive(\'' + esc(user.id) + '\',' + (!user.is_active) + ')"' + accountDisabled + '>' + accountAction + '</button>' +
