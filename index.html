@@ -788,7 +788,8 @@ async function loadUsers() {
       users.map(user => {
         const assistant = Array.isArray(user.assistants) ? user.assistants[0] : user.assistants;
         const pendingReview = user.role === "assistant" && user.is_active === true && assistant && assistant.active === false;
-        const access = pendingReview ? "Pending approval" : assistant ? (assistant.active ? "Active" : "Inactive") : "Not configured";
+        const rejectedOrUnlinked = user.role === "assistant" && !assistant;
+        const access = pendingReview ? "Pending approval" : rejectedOrUnlinked ? "No assistant record" : assistant ? (assistant.active ? "Active" : "Inactive") : "Not configured";
         const isSelf = user.id === userData.user.id;
         const roleAction = user.role === "admin" ? "assistant" : "admin";
         const roleLabel = user.role === "admin" ? "Remove admin" : "Make admin";
@@ -796,10 +797,14 @@ async function loadUsers() {
         const accountDisabled = isSelf ? " disabled title=\"You cannot change your own account\"" : "";
         const accountStatus = pendingReview
           ? '<span class="tag" style="background:#fff5dc;color:#805900">Pending review</span>'
-          : user.is_active ? '<span class="tag good">Active</span>' : '<span class="tag bad">Inactive</span>';
+          : rejectedOrUnlinked
+            ? '<span class="tag bad">No active application</span>'
+            : user.is_active ? '<span class="tag good">Active</span>' : '<span class="tag bad">Inactive</span>';
         const accountControls = pendingReview
           ? '<span class="small">Use Approve / Reject above</span>'
-          : `<button type="button" class="${user.is_active ? 'danger' : 'secondary'}" onclick="changeUserActive('${esc(user.id)}',${!user.is_active})"${accountDisabled}>${accountAction}</button>`;
+          : rejectedOrUnlinked
+            ? '<span class="small">Cannot reactivate here</span>'
+            : `<button type="button" class="${user.is_active ? 'danger' : 'secondary'}" onclick="changeUserActive('${esc(user.id)}',${!user.is_active})"${accountDisabled}>${accountAction}</button>`;
         return '<tr><td><div class="user-management-name">' + esc(user.full_name || "Unnamed user") +
           '</div><div class="user-management-email">' + esc(user.email || "Email unavailable") +
           '</div></td><td><span class="user-role ' + (user.role === "admin" ? "admin" : "") + '">' +
@@ -2628,8 +2633,12 @@ document.getElementById("loginForm").addEventListener("submit", async function(e
 
 } else if (profile.role === "assistant") {
   const { data: assistantAccess, error: assistantAccessError } = await supabaseClient
-    .from("assistants").select("active").eq("profile_id", loginData.user.id).single();
+    .from("assistants").select("active").eq("profile_id", loginData.user.id).maybeSingle();
   if (assistantAccessError) throw assistantAccessError;
+  if (!assistantAccess) {
+    errorBox.textContent = "This account has no active assistant application. Please contact the administrator; rejected applications cannot be reactivated through User Management.";
+    return;
+  }
   if (!assistantAccess.active) {
     showPendingApplication();
     return;
@@ -2700,8 +2709,14 @@ if (profile.role === "admin") {
 
     } else if (profile.role === "assistant") {
       const { data: assistantAccess, error: assistantAccessError } = await supabaseClient
-        .from("assistants").select("active").eq("profile_id", sessionData.session.user.id).single();
+        .from("assistants").select("active").eq("profile_id", sessionData.session.user.id).maybeSingle();
       if (assistantAccessError) throw assistantAccessError;
+      if (!assistantAccess) {
+        await supabaseClient.auth.signOut();
+        document.getElementById("loginScreen").style.display = "flex";
+        document.getElementById("loginError").textContent = "This account has no active assistant application. Please contact the administrator; rejected applications cannot be reactivated through User Management.";
+        return;
+      }
       if (!assistantAccess.active) {
         showPendingApplication();
         return;
