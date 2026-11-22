@@ -66,6 +66,8 @@ The following TEST history entries do not yet have verified original SQL source 
 - `20261121222534_add_profile_email_for_admin_user_management`
 - `20261121223849_fix_invited_assistant_profile_trigger_timing`
 
+PRs #1–3 contained only frontend changes. The first TEST schema and RLS migration entries therefore do not have corresponding migration files in those PRs. Other missing changes may have been applied directly to the TEST database or committed outside the PRs inspected so far. Do not assume their original SQL is recoverable from migration history.
+
 These must be recovered from earlier commits/branches where possible. If original SQL cannot be found, any reconstruction must be labelled as reconstructed, generated from a documented TEST schema diff, and reviewed separately. It must not be represented as the original migration.
 
 ## Version discrepancy requiring resolution
@@ -76,9 +78,23 @@ The TEST migration history reports:
 
 The merged PR #22 changed-file path is:
 
-`supabase/migrations/20261121225000_add_secure_user_role_and_activation_management.sql`
+`20261121225000_add_secure_user_role_and_activation_management.sql`
 
 These version identifiers differ. Do not rename, replay, or mark either version applied until the exact database history row, PR merge commit, and resulting live schema are reconciled. A migration-history mismatch can cause duplicate or skipped execution.
+
+## Live schema comparison (read-only inspection)
+
+A read-only inspection of both live databases confirms:
+
+- Both environments have the same core public tables: assistants, audit_logs, availability, hospitals, invitations, procedures, profiles, surgeons and surgical_cases. Both also expose a `calendar_events` view.
+- TEST has an additional `notifications` table and notification triggers.
+- TEST `profiles` has `email` and `is_active`; production does not.
+- TEST `surgical_cases` has `completed_at` and `completed_by`; production does not. TEST also accepts the `completed` status; production's status constraint does not.
+- TEST has additional RPCs for assistant reassignment, assistant removal, case timing changes, case completion, admin user role changes and account activation, plus active-user checks and notification functions.
+- TEST's RLS policies include active-account checks. Production's existing policies do not contain these checks and use the older policy set.
+- Production has legacy functions and policies that must be reviewed and safely replaced or retained deliberately; simply applying all TEST SQL over production is not a safe migration strategy.
+
+The `calendar_events` view is present in both environments; it is not a TEST-only table. This comparison is based on current catalog inspection and is not a full dependency-aware schema diff yet. Index definitions, grants, function bodies, trigger definitions, publication membership, Auth settings, and Edge Function secrets still require separate reconciliation.
 
 ## Production compatibility is not established
 
