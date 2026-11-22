@@ -752,18 +752,26 @@ async function loadUsers() {
 
     const { data: users, error } = await supabaseClient
       .from("profiles")
-      .select("id, full_name, email, role, is_active, created_at, assistants(active)")
+      .select("id, full_name, email, role, is_active, created_at, assistants:assistants!assistants_profile_id_fkey(active)")
       .order("created_at", { ascending: true });
     if (error) throw error;
     if (!users || !users.length) {
       list.innerHTML = '<p class="empty">No registered users found.</p>';
       return;
     }
+
+    // Read the review queue from assistants directly, with an explicit FK join.
+    const { data: applicationRows, error: applicationsError } = await supabaseClient
+      .from("assistants")
+      .select("id, profile_id, created_at, profile:profiles!assistants_profile_id_fkey(id, full_name, email, role, is_active)")
+      .eq("active", false)
+      .order("created_at", { ascending: false });
+    if (applicationsError) throw applicationsError;
+
     const applicationsList = document.getElementById("assistantApplicationsList");
-    const pendingApplications = users.filter(user => {
-      const assistant = Array.isArray(user.assistants) ? user.assistants[0] : user.assistants;
-      return user.role === "assistant" && user.is_active === true && assistant && assistant.active === false;
-    });
+    const pendingApplications = (applicationRows || [])
+      .filter(row => row.profile && row.profile.role === "assistant" && row.profile.is_active === true)
+      .map(row => ({ ...row.profile, created_at: row.created_at }));
     if (applicationsList) {
       applicationsList.innerHTML = pendingApplications.length
         ? '<div class="tablewrap"><table class="user-management-table"><thead><tr><th>Applicant</th><th>Submitted</th><th>Decision</th></tr></thead><tbody>' +
@@ -779,17 +787,24 @@ async function loadUsers() {
     list.innerHTML = '<div class="tablewrap"><table class="user-management-table"><thead><tr><th>Name / email</th><th>Role</th><th>Account</th><th>Assistant access</th><th>Role actions</th><th>Account actions</th><th>Created</th></tr></thead><tbody>' +
       users.map(user => {
         const assistant = Array.isArray(user.assistants) ? user.assistants[0] : user.assistants;
-        const access = assistant ? (assistant.active ? "Active" : "Inactive") : "Not configured";
+        const pendingReview = user.role === "assistant" && user.is_active === true && assistant && assistant.active === false;
+        const access = pendingReview ? "Pending approval" : assistant ? (assistant.active ? "Active" : "Inactive") : "Not configured";
         const isSelf = user.id === userData.user.id;
         const roleAction = user.role === "admin" ? "assistant" : "admin";
         const roleLabel = user.role === "admin" ? "Remove admin" : "Make admin";
         const accountAction = user.is_active ? "Deactivate" : "Reactivate";
         const accountDisabled = isSelf ? " disabled title=\"You cannot change your own account\"" : "";
+        const accountStatus = pendingReview
+          ? '<span class="tag" style="background:#fff5dc;color:#805900">Pending review</span>'
+          : user.is_active ? '<span class="tag good">Active</span>' : '<span class="tag bad">Inactive</span>';
+        const accountControls = pendingReview
+          ? '<span class="small">Use Approve / Reject above</span>'
+          : '<button type="button" class="' + (user.is_active ? 'danger' : 'secondary') + '" onclick="changeUserActive(\\'' + esc(user.id) + '\\',' + (!user.is_active) + ')"' + accountDisabled + '>' + accountAction + '</button>';
         return '<tr><td><div class="user-management-name">' + esc(user.full_name || "Unnamed user") +
           '</div><div class="user-management-email">' + esc(user.email || "Email unavailable") +
           '</div></td><td><span class="user-role ' + (user.role === "admin" ? "admin" : "") + '">' +
-          esc(user.role) + '</span></td><td>' + (user.is_active ? '<span class="tag good">Active</span>' : '<span class="tag bad">Inactive</span>') +
-          '</td><td>' + esc(access) + '</td><td>' +
+          esc(user.role) + '</span></td><td>' + accountStatus +
+          '</td><td>' + esc(access) + '</td><td>'
           '<button type="button" class="secondary" onclick="changeUserRole(\'' + esc(user.id) + '\',\'' + roleAction + '\')"' + (isSelf ? ' disabled title="You cannot change your own role"' : '') + '>' + roleLabel + '</button>' +
           '</td><td>' +
           '<button type="button" class="' + (user.is_active ? 'danger' : 'secondary') + '" onclick="changeUserActive(\'' + esc(user.id) + '\',' + (!user.is_active) + ')"' + accountDisabled + '>' + accountAction + '</button>' +
